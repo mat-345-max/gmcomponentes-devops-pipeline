@@ -1248,7 +1248,7 @@
           <span class="bubbleRole">Latencia máxima</span>
           <p>{{ ev3Analysis.max_latency_ms ?? 0 | number:'1.0-0' }} ms</p>
         </article>
-        <article class="agentTraceBox">
+        <article class="agentTraceBox" title="Ejecuciones del agente que no registraron un evento de cierre correctamente">
           <span class="bubbleRole">Trazas incompletas</span>
           <p>{{ ev3Analysis.incomplete_traces ?? 0 }}</p>
         </article>
