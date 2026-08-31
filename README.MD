@@ -302,3 +302,97 @@ El dashboard Streamlit requiere que el bat esté activo. Si se abre el tab EV3 s
 ## 15. Autores
 Marcelo Baeza - Matias Guzman 
 Proyecto desarrollado para **ISY0101 — Ingeniería de Soluciones con IA**.
+
+
+---
+
+## 16. Estrategia de branching y control de versiones (IL1.1 / IE1)
+
+Este proyecto utiliza **GitFlow** como estrategia de branching.
+
+Se eligió GitFlow por sobre trunk-based development por las siguientes razones:
+
+- El equipo trabaja en pareja, en horarios distintos, por lo que se necesita una rama de integración (`develop`) separada de la rama estable (`main`), evitando que cambios a medio terminar lleguen a la versión considerada "lista".
+- La pauta exige simular tanto features como hotfixes de forma diferenciada, lo cual GitFlow modela de forma explícita (un hotfix se resuelve directo sobre `main` sin pasar por el ciclo normal de desarrollo).
+- Trunk-based development asume integración continua muy frecuente y equipos más grandes con feature flags, lo cual no aplica a un proyecto académico de 2 personas con entregas por hito.
+
+### Estructura de ramas
+
+| Rama | Propósito |
+|---|---|
+| `main` | Código estable, listo para entrega/producción |
+| `develop` | Rama de integración de features |
+| `feature/*` | Desarrollo de una funcionalidad puntual, sale de `develop` y vuelve a `develop` |
+| `hotfix/*` | Corrección urgente, sale de `main` y vuelve tanto a `main` como a `develop` |
+
+---
+
+## 17. Convenciones de commits (IE5)
+
+Se usa el estándar **Conventional Commits**:
+
+| Prefijo | Uso |
+|---|---|
+| `feat:` | Nueva funcionalidad |
+| `fix:` | Corrección de un bug |
+| `ci:` | Cambios en pipelines/configuración de CI |
+| `docs:` | Cambios solo de documentación |
+| `chore:` | Tareas de mantenimiento (imports, configs, etc.) |
+
+Ejemplos reales usados en este repositorio:
+- `feat: agregar patrones de deteccion de ddos y keylogger`
+- `feat: agregar tooltip explicativo a metrica de trazas incompletas`
+- `fix: corregir formato de MONGODB_URI en .env.example para que coincida con el README`
+- `ci: agregar workflow de GitHub Actions para develop y main`
+
+---
+
+## 18. Naming de ramas
+
+- `feature/nombre-corto-descriptivo` — ej. `feature/security-patterns`, `feature/ev3-ui-tweak`, `feature/ci-pipeline`
+- `hotfix/nombre-corto-descriptivo` — ej. `hotfix/fix-env-example`
+
+Se evita usar nombres genéricos como `feature/cambios` o `feature/fix1`.
+
+---
+
+## 19. Flujo de merge
+
+1. **Feature:** se crea desde `develop` → se desarrolla → Pull Request hacia `develop` → mínimo 1 aprobación del otro integrante → merge.
+2. **Hotfix:** se crea desde `main` → se corrige el bug puntual → Pull Request hacia `main` → aprobación → merge → luego se integra de vuelta a `develop` (`git merge main` sobre `develop`) para no perder el fix en desarrollo futuro.
+3. **Release (develop → main):** cuando `develop` acumula cambios estables, se abre un Pull Request `develop → main` para promoverlos, disparando el pipeline de CI antes de integrar.
+
+---
+
+## 20. Estrategia de revisión de código
+
+- Todo cambio se integra exclusivamente vía **Pull Request**, nunca con push directo a `main` o `develop`.
+- Se exige al menos **1 aprobación del otro integrante** antes de mergear.
+- El revisor valida: que el cambio corresponda a lo descrito en el título/commit, que no rompa la funcionalidad existente, y que el pipeline de CI (GitHub Actions) pase en verde antes de aprobar.
+
+---
+
+## 21. Integración continua (IE3 / IE4)
+
+Se configuró un workflow de GitHub Actions (`.github/workflows/ci.yml`) con dos disparadores:
+
+- `push` a la rama `develop`
+- `pull_request` hacia la rama `main`
+
+El workflow valida de forma independiente:
+- **Backend Node (`groq-proxy`)**: instalación de dependencias y lint.
+- **Backend Python (`agente`)**: instalación de dependencias y verificación de import de `ev3_bridge`.
+
+Ambos triggers fueron verificados manualmente en la pestaña **Actions** del repositorio, con corridas exitosas (✅) tanto en el push a `develop` como en el Pull Request hacia `main`.
+
+---
+
+## 22. Nota sobre el flujo de trabajo
+
+Durante la configuración inicial, los PRs #1 y #2 (features) se mergearon directamente a `main` por un error de selección de rama base en GitHub (quedó `main` seleccionada por defecto en vez de `develop`). El PR #3 (hotfix) sí siguió el flujo correcto, ya que un hotfix debe integrarse directo a `main`. Se sincronizó `develop` con `main` mediante `git merge main` para no perder ningún cambio, y a partir del PR #4 se corrigió el flujo, verificando siempre que la rama base fuera `develop` para features y `main` únicamente para hotfixes.
+
+---
+
+## 23. Autores del pipeline DevOps
+
+Este repositorio (`gmcomponentes-devops-pipeline`) fue creado a partir del proyecto base `gmcomponentes-agents-metrics-ev3`, desarrollado originalmente por Marcelo Baeza y Matias Guzman, para la asignatura **DevOps** — Evaluación Parcial 1.
