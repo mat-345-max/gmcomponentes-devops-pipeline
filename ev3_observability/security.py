@@ -29,6 +29,8 @@ BLOCKED_PATTERNS = [
     r"\bcontraseñas?\b.{0,30}\brobar\b",
     r"\bataque\b.{0,30}\bservidor\b",
     r"\bcomo\b.{0,30}\bromper\b.{0,30}\bseguridad\b",
+    r"\bddos\b",
+    r"\bkeylogger\b",
 ]
 
 SENSITIVE_DATA_PATTERNS = [
