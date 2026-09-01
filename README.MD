@@ -396,3 +396,16 @@ Durante la configuración inicial, los PRs #1 y #2 (features) se mergearon direc
 ## 23. Autores del pipeline DevOps
 
 Este repositorio (`gmcomponentes-devops-pipeline`) fue creado a partir del proyecto base `gmcomponentes-agents-metrics-ev3`, desarrollado originalmente por Marcelo Baeza y Matias Guzman, para la asignatura **DevOps** — Evaluación Parcial 1.
+
+---
+
+## 24. Uso de Inteligencia Artificial
+
+Se utilizó Claude (Anthropic) como herramienta de apoyo durante el desarrollo de este encargo. El uso incluyó:
+
+    Guía paso a paso para la configuración de Git/GitHub (creación de ramas, resolución de errores de remoto, PRs).
+    Ayuda para la metodologia de trabajo(GITflow/trunk-based development)y la toma de desicion del respectivo.
+    Redacción base del workflow de GitHub Actions (ci.yml) y de las secciones de convenciones (17-23), adaptadas por el equipo a la realidad del proyecto.
+    Apoyo para diagnosticar y corregir errores de flujo (PRs mergeados a la rama base incorrecta).
+
+El equipo revisó, validó y aplicó cada sugerencia, verificando que el resultado funcionara correctamente en el repositorio (ramas, PRs, pipeline de CI). Las reflexiones individuales sobre el aprendizaje del proceso se encuentran en la sección de conclusiones del proyecto, redactadas sin apoyo de IA.
