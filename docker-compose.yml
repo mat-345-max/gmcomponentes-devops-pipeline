@@ -1,0 +1,14 @@
+services:
+  groq-proxy:
+    build: ./groq-proxy
+    ports:
+      - "8787:8787"
+    env_file:
+      - ./groq-proxy/.env
+    depends_on:
+      - agente
+
+  agente:
+    build: ./agente
+    ports:
+      - "8790:8790"
