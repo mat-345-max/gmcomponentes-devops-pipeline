@@ -4,7 +4,7 @@ on:
   push:
     branches: [develop]
   pull_request:
-    branches: [main]
+    branches: [develop, main]
 
 jobs:
   backend-node:
@@ -16,7 +16,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 22
       - run: npm install
       - run: npm run lint --if-present
 
@@ -32,3 +32,29 @@ jobs:
           python-version: "3.11"
       - run: pip install -r requirements.txt
       - run: python -c "import ev3_bridge" || echo "revisar import"
+  docker-build-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Crear .env de prueba para CI
+        run: |
+          cat > groq-proxy/.env <<EOF
+          PORT=8787
+          GROQ_API_KEY=dummy
+          GROQ_MODEL=openai/gpt-oss-20b
+          VOYAGE_API_KEY=dummy
+          MONGODB_URI=mongodb://localhost:27017/faq_logs
+          MONGODB_DB=faq_logs
+          MONGODB_COLLECTION=gm_componentes_logs_faq
+          EOF
+      - name: Build imágenes Docker
+        run: docker compose build
+      - name: Levantar servicios (despliegue simulado)
+        run: docker compose up -d
+      - name: Verificar que los servicios respondan
+        run: |
+          sleep 10
+          curl --fail http://localhost:8790/health
+          curl --fail http://localhost:8787/api/health
+      - name: Apagar servicios
+        run: docker compose down
