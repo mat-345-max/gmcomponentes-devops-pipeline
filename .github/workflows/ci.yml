@@ -93,7 +93,7 @@ jobs:
       - uses: snyk/actions/setup@master
 
       - name: Snyk dependencias del agente (Python)
-        run: snyk test --file=agente/requirements.txt --package-manager=pip --severity-threshold=high
+        run: snyk test --file=agente/requirements.txt --package-manager=pip --severity-threshold=high --policy-path=.snyk
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
