@@ -50,10 +50,9 @@ jobs:
       - name: Build imágenes Docker
         run: docker compose build
       - name: Levantar servicios (despliegue simulado)
-        run: docker compose up -d
+        run: docker compose up -d --wait
       - name: Verificar que los servicios respondan
         run: |
-          sleep 10
           curl --fail http://localhost:8790/health
           curl --fail http://localhost:8787/api/health
       - name: Apagar servicios
