@@ -18,7 +18,7 @@ jobs:
         with:
           node-version: 22
       - run: npm install
-      - run: npm run lint --if-present
+      - run: npm test
 
   agente-python:
     runs-on: ubuntu-latest
@@ -32,6 +32,8 @@ jobs:
           python-version: "3.11"
       - run: pip install -r requirements.txt
       - run: python -c "import ev3_bridge" || echo "revisar import"
+      - run: pip install -r requirements-dev.txt
+      - run: python -m pytest tests -v
   docker-build-deploy:
     runs-on: ubuntu-latest
     steps:
@@ -57,3 +59,51 @@ jobs:
           curl --fail http://localhost:8787/api/health
       - name: Apagar servicios
         run: docker compose down
+
+
+  observability-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements-dev.txt
+      - run: python -m pytest ev3_observability/tests -v --cov=ev3_observability
+
+
+  security-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Instalar dependencias
+        run: |
+          pip install -r agente/requirements.txt
+          cd groq-proxy && npm install
+
+      - uses: snyk/actions/setup@master
+
+      - name: Snyk dependencias del agente (Python)
+        run: snyk test --file=agente/requirements.txt --package-manager=pip --severity-threshold=high
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+
+      - name: Snyk dependencias de groq-proxy (Node)
+        working-directory: groq-proxy
+        run: snyk test --severity-threshold=high
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+
+      - name: Snyk Code (análisis del código fuente)
+        run: snyk code test --severity-threshold=high
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
