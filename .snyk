@@ -1,0 +1,42 @@
+version: v1.25.0
+ignore:
+  SNYK-PYTHON-LANGSMITH-17391446:
+    - '*':
+        reason: Actualizar langchain 0.2 a 0.3 requiere migrar el agente. Pendiente para una iteración futura.
+        expires: 2026-12-31T00:00:00.000Z
+  SNYK-PYTHON-LANGCHAINCORE-14100977:
+    - '*':
+        reason: Actualizar langchain 0.2 a 0.3 requiere migrar el agente. Pendiente para una iteración futura.
+        expires: 2026-12-31T00:00:00.000Z
+  SNYK-PYTHON-LANGCHAINCOMMUNITY-12510808:
+    - '*':
+        reason: Actualizar langchain 0.2 a 0.3 requiere migrar el agente. Pendiente para una iteración futura.
+        expires: 2026-12-31T00:00:00.000Z
+  SNYK-PYTHON-LANGSMITH-16658748:
+    - '*':
+        reason: Actualizar langchain 0.2 a 0.3 requiere migrar el agente. Pendiente para una iteración futura.
+        expires: 2026-12-31T00:00:00.000Z
+  SNYK-PYTHON-LANGCHAINCORE-15809257:
+    - '*':
+        reason: Actualizar langchain 0.2 a 0.3 requiere migrar el agente. Pendiente para una iteración futura.
+        expires: 2026-12-31T00:00:00.000Z
+  SNYK-PYTHON-LANGCHAINCORE-16624521:
+    - '*':
+        reason: Actualizar langchain 0.2 a 0.3 requiere migrar el agente. Pendiente para una iteración futura.
+        expires: 2026-12-31T00:00:00.000Z
+  SNYK-PYTHON-LANGCHAIN-16658746:
+    - '*':
+        reason: Actualizar langchain 0.2 a 0.3 requiere migrar el agente. Pendiente para una iteración futura.
+        expires: 2026-12-31T00:00:00.000Z
+  SNYK-PYTHON-LANGCHAINTEXTSPLITTERS-12704815:
+    - '*':
+        reason: Actualizar langchain 0.2 a 0.3 requiere migrar el agente. Pendiente para una iteración futura.
+        expires: 2026-12-31T00:00:00.000Z
+  SNYK-PYTHON-LANGCHAINCOMMUNITY-19233333:
+    - '*':
+        reason: Sin versión corregida disponible. Se revisa periódicamente.
+        expires: 2026-12-31T00:00:00.000Z
+  SNYK-PYTHON-LANGCHAINCORE-14560681:
+    - '*':
+        reason: Actualizar langchain 0.2 a 0.3 requiere migrar el agente. Pendiente para una iteración futura.
+        expires: 2026-12-31T00:00:00.000Z
