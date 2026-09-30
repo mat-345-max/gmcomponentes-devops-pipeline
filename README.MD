@@ -463,9 +463,17 @@ Para poder testear `groq-proxy` sin levantar el servidor, se separó `app.js` (l
 
 ![Checks del PR #13: security-scan failing, docker-build-deploy skipped](docs/evidencias/pr-checks-bloqueo.png)
 
-
 - **Archivo `.snyk`:** se documentan ahí las vulnerabilidades ignoradas conscientemente: 10 hallazgos en `langchain`/`langchain-core`/`langchain-community`/`langsmith` (actualizar rompería `langchain-openai==0.1.23`, pendiente para una migración futura) y 2 hallazgos de "Hardcoded Secret" sobre la `apiKey` de Firebase en `src/environments/`, que es pública por diseño y está protegida por las reglas de seguridad del backend, no por su confidencialidad.
 
+### 25.4.1 Evidencia adicional: pipeline completo en verde
+
+Ejecución con los cinco jobs pasando (tests, seguridad, build y despliegue simulado):
+
+![Pipeline completo en verde: backend-node, agente-python, docker-build-deploy, observability-tests y security-scan](docs/evidencias/pipeline-completo-verde.jpg)
+
+Detalle del despliegue simulado, con los tres servicios respondiendo en sus endpoints de salud:
+
+![Healthchecks respondiendo en docker-build-deploy](docs/evidencias/healthchecks-docker-build-deploy.jpg)
 
 ### 25.5 Despliegue simulado y orquestación (IE4, IE5)
 
