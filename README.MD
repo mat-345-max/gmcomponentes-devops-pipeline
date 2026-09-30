@@ -256,14 +256,14 @@ Incluye:
 
 ## 11. Métricas implementadas (IL3.1)
 
-| Métrica | Descripción |
-|---|---|
-| Precisión | Score heurístico por intent y herramientas usadas |
-| Consistencia | Score basado en estabilidad del flujo |
-| Latencia | Tiempo de ejecución por llamada en ms |
-| Tasa de error | Porcentaje de errores sobre total de eventos |
-| Bloqueos de seguridad | Cantidad de inputs bloqueados por filtros EV3 |
-| Trazas incompletas | Ejecuciones sin evento de cierre registrado |
+| Métrica               | Descripción                                       |
+| --------------------- | ------------------------------------------------- |
+| Precisión             | Score heurístico por intent y herramientas usadas |
+| Consistencia          | Score basado en estabilidad del flujo             |
+| Latencia              | Tiempo de ejecución por llamada en ms             |
+| Tasa de error         | Porcentaje de errores sobre total de eventos      |
+| Bloqueos de seguridad | Cantidad de inputs bloqueados por filtros EV3     |
+| Trazas incompletas    | Ejecuciones sin evento de cierre registrado       |
 
 ---
 
@@ -282,12 +282,12 @@ El validador de seguridad interactivo está disponible en ambos dashboards.
 
 ## 13. Relación con indicadores de logro EV3
 
-| Indicador | Implementación |
-|---|---|
-| IL3.1 | `metrics.py`: precisión, consistencia, latencia conectadas de punta a punta |
-| IL3.2 | `traceability.py` + `analyzer.py`: trazas JSONL con hallazgos automáticos |
-| IL3.3 | `security.py`: validación, sanitización y bloqueo de inputs |
-| IL3.4 | `recommendations.py`: recomendaciones por área con justificación basada en métricas |
+| Indicador | Implementación                                                                      |
+| --------- | ----------------------------------------------------------------------------------- |
+| IL3.1     | `metrics.py`: precisión, consistencia, latencia conectadas de punta a punta         |
+| IL3.2     | `traceability.py` + `analyzer.py`: trazas JSONL con hallazgos automáticos           |
+| IL3.3     | `security.py`: validación, sanitización y bloqueo de inputs                         |
+| IL3.4     | `recommendations.py`: recomendaciones por área con justificación basada en métricas |
 
 ---
 
@@ -300,9 +300,9 @@ El dashboard Streamlit requiere que el bat esté activo. Si se abre el tab EV3 s
 ---
 
 ## 15. Autores
-Marcelo Baeza - Matias Guzman 
-Proyecto desarrollado para **ISY0101 — Ingeniería de Soluciones con IA**.
 
+Marcelo Baeza - Matias Guzman
+Proyecto desarrollado para **ISY0101 — Ingeniería de Soluciones con IA**.
 
 ---
 
@@ -318,12 +318,12 @@ Se eligió GitFlow por sobre trunk-based development por las siguientes razones:
 
 ### Estructura de ramas
 
-| Rama | Propósito |
-|---|---|
-| `main` | Código estable, listo para entrega/producción |
-| `develop` | Rama de integración de features |
+| Rama        | Propósito                                                                       |
+| ----------- | ------------------------------------------------------------------------------- |
+| `main`      | Código estable, listo para entrega/producción                                   |
+| `develop`   | Rama de integración de features                                                 |
 | `feature/*` | Desarrollo de una funcionalidad puntual, sale de `develop` y vuelve a `develop` |
-| `hotfix/*` | Corrección urgente, sale de `main` y vuelve tanto a `main` como a `develop` |
+| `hotfix/*`  | Corrección urgente, sale de `main` y vuelve tanto a `main` como a `develop`     |
 
 ---
 
@@ -331,15 +331,16 @@ Se eligió GitFlow por sobre trunk-based development por las siguientes razones:
 
 Se usa el estándar **Conventional Commits**:
 
-| Prefijo | Uso |
-|---|---|
-| `feat:` | Nueva funcionalidad |
-| `fix:` | Corrección de un bug |
-| `ci:` | Cambios en pipelines/configuración de CI |
-| `docs:` | Cambios solo de documentación |
+| Prefijo  | Uso                                              |
+| -------- | ------------------------------------------------ |
+| `feat:`  | Nueva funcionalidad                              |
+| `fix:`   | Corrección de un bug                             |
+| `ci:`    | Cambios en pipelines/configuración de CI         |
+| `docs:`  | Cambios solo de documentación                    |
 | `chore:` | Tareas de mantenimiento (imports, configs, etc.) |
 
 Ejemplos reales usados en este repositorio:
+
 - `feat: agregar patrones de deteccion de ddos y keylogger`
 - `feat: agregar tooltip explicativo a metrica de trazas incompletas`
 - `fix: corregir formato de MONGODB_URI en .env.example para que coincida con el README`
@@ -380,10 +381,13 @@ Se configuró un workflow de GitHub Actions (`.github/workflows/ci.yml`) con dos
 - `pull_request` hacia la rama `main`
 
 El workflow valida de forma independiente:
+
 - **Backend Node (`groq-proxy`)**: instalación de dependencias y lint.
 - **Backend Python (`agente`)**: instalación de dependencias y verificación de import de `ev3_bridge`.
 
 Ambos triggers fueron verificados manualmente en la pestaña **Actions** del repositorio, con corridas exitosas (✅) tanto en el push a `develop` como en el Pull Request hacia `main`.
+
+> **Actualización (EP2):** esta sección describe el pipeline de EP1. El pipeline actual (contenerización, tests, seguridad y despliegue simulado) se documenta en la sección 25.
 
 ---
 
@@ -397,7 +401,6 @@ Durante la configuración inicial, los PRs #1 y #2 (features) se mergearon direc
 
 Este repositorio (`gmcomponentes-devops-pipeline`) fue creado a partir del proyecto base `gmcomponentes-agents-metrics-ev3`, desarrollado originalmente por Marcelo Baeza y Matias Guzman, para la asignatura **DevOps** — Evaluación Parcial 1.
 
-
 ---
 
 ## 24. Uso de Inteligencia Artificial
@@ -410,3 +413,76 @@ Se utilizó Claude (Anthropic) como herramienta de apoyo durante el desarrollo d
 - Apoyo para diagnosticar y corregir errores de flujo (PRs mergeados a la rama base incorrecta).
 
 El equipo revisó, validó y aplicó cada sugerencia, verificando que el resultado funcionara correctamente en el repositorio (ramas, PRs, pipeline de CI). Las reflexiones individuales sobre el aprendizaje del proceso se encuentran en la sección de conclusiones del proyecto, redactadas sin apoyo de IA.
+
+---
+
+## 25. Pipeline CI/CD — Evaluación Parcial 2 (DevOps)
+
+Esta sección documenta el pipeline de CI/CD construido en `.github/workflows/ci.yml` para la EP2 de **Ingeniería DevOps (DOY0101)**, que automatiza el ciclo de vida de los tres servicios del monorepo: `agente` (FastAPI), `groq-proxy` (Node/Express) y el frontend (Angular/Ionic).
+
+### 25.1 Disparadores
+
+El workflow se ejecuta en:
+
+- `push` a la rama `develop`.
+- `pull_request` hacia `develop` y hacia `main`.
+
+### 25.2 Contenerización (IE1)
+
+Cada servicio tiene su propio `Dockerfile`:
+
+| Servicio                      | Base                                           | Detalle                                                                        |
+| ----------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------ |
+| `agente/Dockerfile`           | `python:3.11-slim`                             | Instala `requirements.txt`, expone el puerto 8790                              |
+| `groq-proxy/Dockerfile`       | `node:22-alpine`                               | Node 22 porque `mongodb@^7.2.0` exige Node ≥ 20.19; expone el puerto 8787      |
+| `Dockerfile` (raíz, frontend) | Multi-stage: `node:22-alpine` + `nginx:alpine` | Compila Angular con `ng build` y sirve los estáticos con nginx en el puerto 80 |
+
+Cada carpeta de servicio tiene su propio `.dockerignore` para no incluir `node_modules`, `.venv`, `.git` ni archivos `.env` dentro de las imágenes.
+
+El job `docker-build-deploy` construye las tres imágenes en cada ejecución con `docker compose build`.
+
+### 25.3 Pruebas automatizadas (IE2)
+
+| Servicio            | Framework         | Job en CI             |
+| ------------------- | ----------------- | --------------------- |
+| `agente`            | pytest            | `agente-python`       |
+| `groq-proxy`        | jest + supertest  | `backend-node`        |
+| `ev3_observability` | pytest (28 tests) | `observability-tests` |
+
+Para poder testear `groq-proxy` sin levantar el servidor, se separó `app.js` (la instancia de Express) de `server.js` (el `listen`).
+
+### 25.4 Seguridad (IE3)
+
+- **Dependabot** (`.github/dependabot.yml`): monitorea dependencias npm (`/groq-proxy`), pip (`/agente`) y GitHub Actions.
+- **Snyk** (job `security-scan`): analiza dependencias (`snyk test`) y código fuente (`snyk code test`) con `--severity-threshold=high`.
+- **Bloqueo:** el job `docker-build-deploy` depende de `security-scan` mediante `needs`, por lo que el build y el despliegue no se ejecutan si el análisis de seguridad falla.
+
+> _Pendiente: completar con el enlace a la ejecución que demuestra el bloqueo en rojo._
+
+### 25.5 Despliegue simulado y orquestación (IE4, IE5)
+
+La orquestación se hace con **Docker Compose** (`docker-compose.yml`), con los tres servicios:
+
+```text
+agente        -> puerto 8790, healthcheck sobre /health
+groq-proxy    -> puerto 8787, healthcheck sobre /api/health, depende de agente (service_healthy)
+frontend      -> puerto 8080, healthcheck sobre /healthz
+```
+
+Cada servicio define un `healthcheck` propio. `groq-proxy` usa `depends_on: agente: condition: service_healthy`, de modo que no arranca hasta que el agente responde de verdad (no solo hasta que el contenedor existe).
+
+En CI, el job `docker-build-deploy`:
+
+1. Crea un `.env` de prueba para `groq-proxy` (sin credenciales reales).
+2. Construye las tres imágenes (`docker compose build`).
+3. Levanta los servicios y espera a que estén sanos (`docker compose up -d --wait`).
+4. Verifica los tres endpoints de salud con `curl --fail`.
+5. Apaga los servicios (`docker compose down`).
+
+### 25.6 Trazabilidad
+
+Cada ejecución del pipeline queda asociada a un commit y a un PR específico en la pestaña **Actions** de GitHub, con la secuencia: commit → tests → análisis de seguridad → build de imágenes → despliegue simulado → verificación de salud. El historial de Pull Requests documenta qué cambio introdujo cada job nuevo.
+
+### 25.7 Decisión de seguridad documentada
+
+`ev3_observability/security.py` usa `eval()` restringido por una lista blanca de caracteres. Es una decisión consciente: la función evalúa únicamente expresiones aritméticas internas, sin recibir entrada libre del usuario. Si el análisis de Snyk lo marca como hallazgo, se documenta aquí en vez de eliminarse.
