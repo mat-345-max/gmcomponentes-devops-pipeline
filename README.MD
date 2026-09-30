@@ -457,7 +457,15 @@ Para poder testear `groq-proxy` sin levantar el servidor, se separó `app.js` (l
 - **Snyk** (job `security-scan`): analiza dependencias (`snyk test`) y código fuente (`snyk code test`) con `--severity-threshold=high`.
 - **Bloqueo:** el job `docker-build-deploy` depende de `security-scan` mediante `needs`, por lo que el build y el despliegue no se ejecutan si el análisis de seguridad falla.
 
-> _Pendiente: completar con el enlace a la ejecución que demuestra el bloqueo en rojo._
+- **Evidencia del bloqueo:** en el PR #13 (`test/demo-vulnerabilidad`) se agregó `lodash@4.17.15` a propósito, con vulnerabilidades conocidas. El job `security-scan` falló y, gracias al `needs`, `docker-build-deploy` quedó **skipped** (no se ejecutó): [ejecución #26](https://github.com/mat-345-max/gmcomponentes-devops-pipeline/actions/runs/36652069079). El PR se cerró sin mergear y la rama de prueba se eliminó.
+
+![Log de security-scan mostrando las vulnerabilidades de lodash](docs/evidencias/security-scan-log.png)
+
+![Checks del PR #13: security-scan failing, docker-build-deploy skipped](docs/evidencias/pr-checks-bloqueo.png)
+
+
+- **Archivo `.snyk`:** se documentan ahí las vulnerabilidades ignoradas conscientemente: 10 hallazgos en `langchain`/`langchain-core`/`langchain-community`/`langsmith` (actualizar rompería `langchain-openai==0.1.23`, pendiente para una migración futura) y 2 hallazgos de "Hardcoded Secret" sobre la `apiKey` de Firebase en `src/environments/`, que es pública por diseño y está protegida por las reglas de seguridad del backend, no por su confidencialidad.
+
 
 ### 25.5 Despliegue simulado y orquestación (IE4, IE5)
 
