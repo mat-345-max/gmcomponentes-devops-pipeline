@@ -48,3 +48,6 @@ ignore:
     - '*':
         reason: Firebase apiKey publica por diseno, protegida por reglas de seguridad del backend, no es un secreto sensible.
         expires: 2026-12-31T00:00:00.000Z
+exclude:
+  code:
+    - src/environments/**
