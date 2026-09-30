@@ -40,3 +40,11 @@ ignore:
     - '*':
         reason: Actualizar langchain 0.2 a 0.3 requiere migrar el agente. Pendiente para una iteración futura.
         expires: 2026-12-31T00:00:00.000Z
+  99f8a759-8e0a-4a03-a081-f1b8a00ee595:
+    - '*':
+        reason: Firebase apiKey publica por diseno, protegida por reglas de seguridad del backend, no es un secreto sensible.
+        expires: 2026-12-31T00:00:00.000Z
+  e1d3858c-7774-4c93-8cc2-6d5a3d1a59d5:
+    - '*':
+        reason: Firebase apiKey publica por diseno, protegida por reglas de seguridad del backend, no es un secreto sensible.
+        expires: 2026-12-31T00:00:00.000Z
