@@ -16,5 +16,8 @@
   "devDependencies": {
     "jest": "^29.7.0",
     "supertest": "^7.3.0"
+  },
+  "overrides": {
+    "proxy-addr": "2.0.8"
   }
 }
