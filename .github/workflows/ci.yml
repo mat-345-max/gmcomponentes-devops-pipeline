@@ -104,6 +104,6 @@ jobs:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
       - name: Snyk Code (análisis del código fuente)
-        run: snyk code test --severity-threshold=high
+        run: snyk code test --severity-threshold=high --policy-path=.snyk
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
