@@ -495,6 +495,25 @@ En CI, el job `docker-build-deploy`:
 4. Verifica los tres endpoints de salud con `curl --fail`.
 5. Apaga los servicios (`docker compose down`).
 
+### 25.5.1 Escalabilidad (IE3)
+
+Cada servicio del `docker-compose.yml` define límites de recursos (`mem_limit`, `cpus`) para evitar que un contenedor consuma todos los recursos del host y afecte a los demás:
+
+| Servicio     | Memoria | CPU  |
+| ------------ | ------- | ---- |
+| `agente`     | 512m    | 0.5  |
+| `groq-proxy` | 512m    | 0.5  |
+| `frontend`   | 128m    | 0.25 |
+
+Verificado con `docker inspect`:
+
+```text
+$ docker inspect gmcomponentes-devops-pipeline-agente-1 --format "{{.HostConfig.Memory}} {{.HostConfig.NanoCpus}}"
+536870912 500000000
+```
+
+`agente` no publica estado propio (las trazas se escriben a archivo compartido en `ev3_observability/logs/`), por lo que es el candidato natural a escalar horizontalmente con `docker compose up --scale agente=N` detrás de un balanceador. `groq-proxy` y `frontend` publican puertos fijos en este compose de demostración; escalarlos en un entorno real requeriría quitar el mapeo directo de puertos y agregar un balanceador (nginx o un load balancer gestionado), lo cual queda fuera del alcance de este despliegue simulado.
+
 ### 25.6 Trazabilidad
 
 Cada ejecución del pipeline queda asociada a un commit y a un PR específico en la pestaña **Actions** de GitHub, con la secuencia: commit → tests → análisis de seguridad → build de imágenes → despliegue simulado → verificación de salud. El historial de Pull Requests documenta qué cambio introdujo cada job nuevo.
