@@ -495,13 +495,14 @@ En CI, el job `docker-build-deploy`:
 4. Verifica los tres endpoints de salud con `curl --fail`.
 5. Apaga los servicios (`docker compose down`).
 
-### 25.5.1 Escalabilidad (IE3)
+### 25.5.1 Escalabilidad (IE3, IE5)
 
 Cada servicio del `docker-compose.yml` define límites de recursos (`mem_limit`, `cpus`) para evitar que un contenedor consuma todos los recursos del host y afecte a los demás:
 
 | Servicio     | Memoria | CPU  |
 | ------------ | ------- | ---- |
 | `agente`     | 512m    | 0.5  |
+| `agente-lb`  | 64m     | 0.1  |
 | `groq-proxy` | 512m    | 0.5  |
 | `frontend`   | 128m    | 0.25 |
 
@@ -512,7 +513,27 @@ $ docker inspect gmcomponentes-devops-pipeline-agente-1 --format "{{.HostConfig.
 536870912 500000000
 ```
 
-`agente` no publica estado propio (las trazas se escriben a archivo compartido en `ev3_observability/logs/`), por lo que es el candidato natural a escalar horizontalmente con `docker compose up --scale agente=N` detrás de un balanceador. `groq-proxy` y `frontend` publican puertos fijos en este compose de demostración; escalarlos en un entorno real requeriría quitar el mapeo directo de puertos y agregar un balanceador (nginx o un load balancer gestionado), lo cual queda fuera del alcance de este despliegue simulado.
+**Escalado horizontal real:** el servicio `agente` no publica puerto propio ni mantiene estado en memoria (las trazas se escriben a archivo compartido en `ev3_observability/logs/`), por lo que se diseñó para escalar horizontalmente. Delante de él corre `agente-lb`, un balanceador nginx (`Dockerfile.lb` + `nginx-lb.conf`) que resuelve el nombre de servicio `agente` vía el DNS interno de Docker Compose y reparte el tráfico entre todas sus réplicas con round-robin.
+
+`groq-proxy` se conecta al agente a través del balanceador (`AGENT_SERVICE_URL=http://agente-lb`), nunca directo a una réplica.
+
+Demostración real:
+
+```powershell
+docker compose up -d --scale agente=2 --wait
+# agente-1 y agente-2 quedan (healthy), ambos detrás de agente-lb
+```
+
+Con 10 peticiones consecutivas a `http://localhost:8791/health`, los logs muestran que ambas réplicas reciben tráfico:
+
+```text
+agente-1  | INFO: 172.18.0.4:48508 - "GET /health HTTP/1.1" 200 OK
+agente-2  | INFO: 172.18.0.4:xxxxx - "GET /health HTTP/1.1" 200 OK
+agente-1  | INFO: 172.18.0.4:48522 - "GET /health HTTP/1.1" 200 OK
+agente-2  | INFO: 172.18.0.4:xxxxx - "GET /health HTTP/1.1" 200 OK
+```
+
+`groq-proxy` y `frontend` publican puertos fijos en este compose de demostración, por lo que no escalan de la misma forma; en un entorno real esto se resolvería quitando el mapeo directo y agregando otro balanceador por delante, igual que se hizo con `agente`.
 
 ### 25.6 Trazabilidad
 
