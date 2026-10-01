@@ -7,8 +7,10 @@ services:
       - ./groq-proxy/.env
     mem_limit: 512m
     cpus: "0.5"
+    environment:
+      - AGENT_SERVICE_URL=http://agente-lb
     depends_on:
-      agente:
+      agente-lb:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8787/api/health"]
@@ -19,8 +21,6 @@ services:
 
   agente:
     build: ./agente
-    ports:
-      - "8790:8790"
     mem_limit: 512m
     cpus: "0.5"
     healthcheck:
@@ -35,6 +35,23 @@ services:
       timeout: 5s
       retries: 5
       start_period: 15s
+
+  agente-lb:
+    build:
+      context: .
+      dockerfile: Dockerfile.lb
+    ports:
+      - "8791:80"
+    depends_on:
+      - agente
+    mem_limit: 64m
+    cpus: "0.1"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
   frontend:
     build: .
     ports:
