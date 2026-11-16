@@ -542,3 +542,4 @@ Cada ejecución del pipeline queda asociada a un commit y a un PR específico en
 ### 25.7 Decisión de seguridad documentada
 
 `ev3_observability/security.py` usa `eval()` restringido por una lista blanca de caracteres. Es una decisión consciente: la función evalúa únicamente expresiones aritméticas internas, sin recibir entrada libre del usuario. Si el análisis de Snyk lo marca como hallazgo, se documenta aquí en vez de eliminarse.
+
