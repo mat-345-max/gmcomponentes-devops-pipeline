@@ -6,7 +6,7 @@ requests
 
 langchain==0.2.16
 langchain-openai==0.1.23
-langchain-core>=0.2.0
+langchain-core>=1.8.0
 langchain-community==0.2.16
 langchainhub>=0.1.15
 
