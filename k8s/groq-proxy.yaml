@@ -1,0 +1,81 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: groq-proxy-config
+  namespace: gmcomponentes
+data:
+  PORT: "8787"
+  GROQ_MODEL: "openai/gpt-oss-20b"
+  CATALOG_API_URL: "https://gmcomponents.onrender.com/backend/products/"
+  VOYAGE_MODEL: "voyage-4-large"
+  VOYAGE_EMBEDDINGS_URL: "https://api.voyageai.com/v1/embeddings"
+  MONGODB_DB: "faq_logs"
+  MONGODB_COLLECTION: "gm_componentes_logs_faq"
+  MONGODB_RECOMMENDATION_COLLECTION: "gm_componentes_logs_recommendation"
+  MONGODB_TTL_SECONDS: "60"
+  AGENT_SERVICE_URL: "http://agente:8790"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: groq-proxy
+  namespace: gmcomponentes
+  labels:
+    app: groq-proxy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: groq-proxy
+  template:
+    metadata:
+      labels:
+        app: groq-proxy
+    spec:
+      containers:
+        - name: groq-proxy
+          image: groq-proxy:ci
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8787
+          envFrom:
+            - configMapRef:
+                name: groq-proxy-config
+            - secretRef:
+                name: groq-proxy-secret
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: groq-proxy
+  namespace: gmcomponentes
+  labels:
+    app: groq-proxy
+spec:
+  type: ClusterIP
+  selector:
+    app: groq-proxy
+  ports:
+    - name: http
+      port: 8787
+      targetPort: http
