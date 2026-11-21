@@ -20,5 +20,20 @@
   },
   "overrides": {
     "proxy-addr": "2.0.8"
+  },
+  "jest": {
+    "collectCoverageFrom": [
+      "**/*.js",
+      "!node_modules/**",
+      "!tests/**",
+      "!coverage/**"
+    ],
+    "coverageReporters": ["text", "json-summary"],
+    "coverageThreshold": {
+      "global": {
+        "statements": 5,
+        "lines": 6
+      }
+    }
   }
 }

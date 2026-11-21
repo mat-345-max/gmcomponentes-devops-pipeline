@@ -56,3 +56,6 @@ AGENTES PARA IMPLEMENTAR/
 
 # Local continuity notes
 CONTINUAR_EV2_AGENTES_PROMPT.txt
+
+.coverage
+coverage.json

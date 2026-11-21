@@ -1,0 +1,10 @@
+[run]
+source = .
+omit =
+    tests/*
+    get-pip.py
+    .venv/*
+
+[report]
+show_missing = True
+fail_under = 32
