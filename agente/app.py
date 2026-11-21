@@ -18,12 +18,15 @@ from ev3_bridge import (
     log_agent_start,
     sanitize_for_logs,
 )
+from prom_metrics import metrics_endpoint, metrics_middleware
 
 app = FastAPI(
     title="GM-COMPONENTS Agent Service",
     version="0.2.0",
     description="Servicio Python 3.11 para agentes EV2 + EV3 Observabilidad.",
 )
+
+app.middleware("http")(metrics_middleware)
 
 # ─── EV2 endpoints ────────────────────────────────────────────────────────────
 
@@ -34,6 +37,10 @@ def health() -> dict:
         "service": "gm-components-agent",
         "python": "3.11",
     }
+
+@app.get("/metrics", include_in_schema=False)
+def metrics():
+    return metrics_endpoint()
 
 @app.post("/agent/chat", response_model=AgentChatResponse)
 def agent_chat(payload: AgentChatRequest) -> AgentChatResponse:
