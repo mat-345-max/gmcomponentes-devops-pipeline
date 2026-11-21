@@ -7,6 +7,7 @@ dotenv.config({
   path: path.join(__dirname, '.env')
 });
 
+const { metricsMiddleware, metricsHandler } = require('./metrics');
 const faqRoute = require('./routes/faq.route');
 const recommendationRoute = require('./routes/recommendation.route');
 const agentRoute = require('./routes/agent.route');
@@ -16,10 +17,13 @@ const app = express();
 
 app.use(cors());
 app.use(express.json({ limit: '2mb' }));
+app.use(metricsMiddleware);
 
 app.get('/api/health', (req, res) => {
   res.json({ ok: true, service: 'gmcomponentes_ia_demo_proxy' });
 });
+
+app.get('/metrics', metricsHandler);
 
 app.use('/api/faq', faqRoute);
 app.use('/api/recommendation', recommendationRoute);
