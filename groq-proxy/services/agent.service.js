@@ -13,11 +13,12 @@ async function parseAgentResponse(response) {
   }
 }
 
-async function callAgentChat(payload) {
+async function callAgentChat(payload, requestId) {
   const response = await fetch(`${AGENT_SERVICE_URL}/agent/chat`, {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
+      ...(requestId ? { 'X-Request-ID': requestId } : {})
     },
     body: JSON.stringify(payload || {})
   });
