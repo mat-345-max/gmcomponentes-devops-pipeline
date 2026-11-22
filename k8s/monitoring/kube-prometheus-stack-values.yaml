@@ -23,12 +23,12 @@ kubeProxy:
 grafana:
   # Solo para el entorno efímero del CI (el clúster se destruye al terminar el job)
   adminPassword: admin
-    sidecar:
-      dashboards:
-        enabled: true
-        label: grafana_dashboard
-        labelValue: "1"
-        searchNamespace: monitoring
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      labelValue: "1"
+      searchNamespace: monitoring
 
 prometheus:
   prometheusSpec:
