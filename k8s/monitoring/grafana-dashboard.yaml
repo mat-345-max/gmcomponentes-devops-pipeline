@@ -1,0 +1,74 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gmcomponentes-grafana-dashboard
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  gmcomponentes-devops.json: |
+    {
+      "uid": "gmcomponentes-devops",
+      "title": "GM Components - DevOps EP3",
+      "schemaVersion": 39,
+      "time": {"from": "now-5m", "to": "now"},
+      "refresh": "15s",
+      "panels": [
+        {
+          "id": 1,
+          "type": "timeseries",
+          "title": "Errores HTTP 5xx en 1 minuto",
+          "gridPos": {"x": 0, "y": 0, "w": 8, "h": 8},
+          "targets": [{"refId": "A", "expr": "sum by (service) (increase(http_requests_total{namespace=\"gmcomponentes\",status_code=~\"5..\"}[1m]))", "legendFormat": "{{service}}"}]
+        },
+        {
+          "id": 2,
+          "type": "timeseries",
+          "title": "Latencia HTTP p95 en 1 minuto",
+          "gridPos": {"x": 8, "y": 0, "w": 8, "h": 8},
+          "fieldConfig": {"defaults": {"unit": "s"}, "overrides": []},
+          "targets": [{"refId": "A", "expr": "histogram_quantile(0.95, sum by (service, le) (rate(http_request_duration_seconds_bucket{namespace=\"gmcomponentes\"}[1m])))", "legendFormat": "{{service}}"}]
+        },
+        {
+          "id": 3,
+          "type": "timeseries",
+          "title": "Disponibilidad de los targets",
+          "description": "1 indica que Prometheus pudo consultar el target. 0 indica un fallo de consulta.",
+          "gridPos": {"x": 16, "y": 0, "w": 8, "h": 8},
+          "targets": [{"refId": "A", "expr": "up{namespace=\"gmcomponentes\"}", "legendFormat": "{{service}} / {{pod}}"}]
+        },
+        {
+          "id": 4,
+          "type": "timeseries",
+          "title": "CPU por pod en 1 minuto",
+          "gridPos": {"x": 0, "y": 8, "w": 12, "h": 8},
+          "fieldConfig": {"defaults": {"unit": "cores"}, "overrides": []},
+          "targets": [{"refId": "A", "expr": "sum by (pod) (rate(container_cpu_usage_seconds_total{namespace=\"gmcomponentes\",container!=\"\",container!=\"POD\"}[1m]))", "legendFormat": "{{pod}}"}]
+        },
+        {
+          "id": 5,
+          "type": "timeseries",
+          "title": "Memoria por pod",
+          "gridPos": {"x": 12, "y": 8, "w": 12, "h": 8},
+          "fieldConfig": {"defaults": {"unit": "bytes"}, "overrides": []},
+          "targets": [{"refId": "A", "expr": "sum by (pod) (container_memory_working_set_bytes{namespace=\"gmcomponentes\",container!=\"\",container!=\"POD\"})", "legendFormat": "{{pod}}"}]
+        },
+        {
+          "id": 6,
+          "type": "stat",
+          "title": "Cobertura de pruebas por servicio",
+          "gridPos": {"x": 0, "y": 16, "w": 12, "h": 5},
+          "fieldConfig": {"defaults": {"unit": "percent"}, "overrides": []},
+          "options": {"textMode": "value_and_name"},
+          "targets": [{"refId": "A", "expr": "ci_test_coverage_percent", "instant": true, "range": false, "legendFormat": "{{service}}"}]
+        },
+        {
+          "id": 7,
+          "type": "stat",
+          "title": "Duración del despliegue en Kubernetes",
+          "gridPos": {"x": 12, "y": 16, "w": 12, "h": 5},
+          "fieldConfig": {"defaults": {"unit": "s"}, "overrides": []},
+          "targets": [{"refId": "A", "expr": "ci_deploy_duration_seconds", "instant": true, "range": false}]
+        }
+      ]
+    }

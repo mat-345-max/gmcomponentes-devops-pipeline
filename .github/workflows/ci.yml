@@ -180,6 +180,9 @@ jobs:
             -f k8s/monitoring/kube-prometheus-stack-values.yaml \
             --wait --timeout 10m
 
+      - name: Aplicar dashboard de Grafana
+        run: kubectl apply -f k8s/monitoring/grafana-dashboard.yaml
+
       - name: Instalar Pushgateway
         run: |
           helm upgrade --install pushgateway prometheus-community/prometheus-pushgateway \
@@ -252,6 +255,51 @@ jobs:
             sleep 10
           done
           echo "Prometheus no llegó a leer los 3 targets esperados."
+          exit 1
+
+      - name: Verificar que Grafana cargó el dashboard
+        run: |
+          kubectl port-forward -n monitoring svc/kube-prometheus-stack-grafana 3000:80 &
+          grafana_pid=$!
+          trap 'kill "$grafana_pid" 2>/dev/null || true' EXIT
+
+          for intento in $(seq 1 15); do
+            if curl --fail --silent --max-time 5 --user admin:admin \
+              http://127.0.0.1:3000/api/dashboards/uid/gmcomponentes-devops \
+              | jq -e '.dashboard.uid == "gmcomponentes-devops" and (.dashboard.panels | length == 7)' >/dev/null; then
+              echo "Grafana cargó el dashboard con sus siete paneles."
+              exit 0
+            fi
+            sleep 4
+          done
+
+          echo "::error::Grafana no cargó el dashboard con sus siete paneles."
+          exit 1
+      
+      - name: Verificar métricas del CI en Prometheus
+        run: |
+          kubectl port-forward -n monitoring svc/kube-prometheus-stack-prometheus 9092:9090 &
+          prometheus_pid=$!
+          trap 'kill "$prometheus_pid" 2>/dev/null || true' EXIT
+
+          consultar() {
+            curl --fail --silent --max-time 5 --get \
+              --data-urlencode "query=$1" \
+              http://127.0.0.1:9092/api/v1/query
+          }
+
+          for intento in $(seq 1 15); do
+            if consultar 'ci_test_coverage_percent{service=~"agente|groq-proxy"}' \
+              | jq -e '([.data.result[].metric.service] | unique) == ["agente", "groq-proxy"]' >/dev/null \
+              && consultar 'ci_deploy_duration_seconds' \
+              | jq -e '(.data.result | length) > 0' >/dev/null; then
+              echo "Prometheus recibió la cobertura de ambos servicios y la duración del despliegue."
+              exit 0
+            fi
+            sleep 4
+          done
+
+          echo "::error::Faltan métricas del CI en Prometheus."
           exit 1
 
       - name: Diagnóstico si algo falla
