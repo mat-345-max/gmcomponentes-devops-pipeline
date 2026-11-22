@@ -1,0 +1,7 @@
+# Pushgateway para publicar métricas del CI (cobertura, duración del despliegue).
+# Quedará accesible dentro del clúster en: http://pushgateway.monitoring.svc:9091
+fullnameOverride: pushgateway
+
+serviceMonitor:
+  enabled: true
+  namespace: monitoring

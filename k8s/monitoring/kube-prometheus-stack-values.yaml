@@ -1,0 +1,33 @@
+# Valores mínimos para correr kube-prometheus-stack en kind dentro de un runner de CI.
+# Chart: prometheus-community/kube-prometheus-stack
+
+defaultRules:
+  create: false
+
+alertmanager:
+  enabled: false
+
+nodeExporter:
+  enabled: false
+
+# En kind los componentes del plano de control no exponen métricas accesibles
+kubeEtcd:
+  enabled: false
+kubeScheduler:
+  enabled: false
+kubeControllerManager:
+  enabled: false
+kubeProxy:
+  enabled: false
+
+grafana:
+  # Solo para el entorno efímero del CI (el clúster se destruye al terminar el job)
+  adminPassword: admin
+
+prometheus:
+  prometheusSpec:
+    # El clúster vive pocos minutos: consultar seguido para tener datos en el dashboard
+    scrapeInterval: 15s
+    # Descubrir los ServiceMonitor de cualquier namespace sin exigir etiquetas de Helm
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
