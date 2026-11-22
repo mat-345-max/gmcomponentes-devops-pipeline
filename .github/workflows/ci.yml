@@ -170,6 +170,27 @@ jobs:
           echo "DEPLOY_SECONDS=$DEPLOY_SECONDS" >> "$GITHUB_ENV"
           echo "Duración del despliegue en k8s: ${DEPLOY_SECONDS}s" >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Instalar Prometheus y Grafana (kube-prometheus-stack)
+        run: |
+          helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+          helm repo update
+          helm upgrade --install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
+            --version 92.22.0 \
+            --namespace monitoring --create-namespace \
+            -f k8s/monitoring/kube-prometheus-stack-values.yaml \
+            --wait --timeout 10m
+
+      - name: Instalar Pushgateway
+        run: |
+          helm upgrade --install pushgateway prometheus-community/prometheus-pushgateway \
+            --version 3.11.1 \
+            --namespace monitoring \
+            -f k8s/monitoring/pushgateway-values.yaml \
+            --wait --timeout 5m
+
+      - name: Registrar los servicios en Prometheus (ServiceMonitor)
+        run: kubectl apply -f k8s/monitoring/servicemonitors.yaml
+
       - name: Verificar servicios (smoke test)
         run: |
           kubectl port-forward -n gmcomponentes svc/groq-proxy 8787:8787 &
@@ -182,10 +203,31 @@ jobs:
           curl --fail http://localhost:8787/metrics > /dev/null
           curl --fail http://localhost:8790/metrics > /dev/null
 
+      - name: Verificar que Prometheus está leyendo los servicios
+        run: |
+          kubectl get svc -n monitoring
+          kubectl port-forward -n monitoring svc/kube-prometheus-stack-prometheus 9090:9090 &
+          sleep 5
+          for i in $(seq 1 12); do
+            UP=$(curl -s -G http://localhost:9090/api/v1/query \
+              --data-urlencode 'query=count(up{namespace="gmcomponentes"}==1)' \
+              | python3 -c "import sys,json; r=json.load(sys.stdin)['data']['result']; print(r[0]['value'][1] if r else 0)")
+            echo "Targets leídos por Prometheus en gmcomponentes: $UP (esperados: 3)"
+            if [ "$UP" -ge 3 ]; then
+              echo "Prometheus está leyendo groq-proxy y las 2 réplicas del agente."
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "Prometheus no llegó a leer los 3 targets esperados."
+          exit 1
+
       - name: Diagnóstico si algo falla
         if: failure()
         run: |
-          kubectl get pods -n gmcomponentes -o wide
+          kubectl get pods -A -o wide
+          kubectl get svc -n monitoring
+          kubectl get servicemonitors -A
           kubectl describe pods -n gmcomponentes
           kubectl logs -n gmcomponentes -l app=groq-proxy --tail=50 || true
           kubectl logs -n gmcomponentes -l app=agente --tail=50 || true
