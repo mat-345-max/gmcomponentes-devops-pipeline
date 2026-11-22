@@ -1,5 +1,7 @@
 import os
+from base64 import b64encode
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from playwright.sync_api import sync_playwright
 
@@ -9,20 +11,30 @@ def main():
     output = Path("artifacts/grafana-dashboard.png")
     output.parent.mkdir(parents=True, exist_ok=True)
 
+    user = os.environ["GRAFANA_USER"]
+    password = os.environ["GRAFANA_PASSWORD"]
+    credentials = b64encode(f"{user}:{password}".encode("utf-8")).decode("ascii")
+
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch()
         page = browser.new_page(viewport={"width": 1600, "height": 1200})
 
-        page.goto(f"{base_url}/login")
-        page.locator('input[name="user"]').fill(os.environ["GRAFANA_USER"])
-        page.locator('input[name="password"]').fill(os.environ["GRAFANA_PASSWORD"])
-        page.get_by_role("button", name="Log in").click()
-        page.wait_for_url(lambda url: "/login" not in url, timeout=30_000)
+        def authorize_grafana(route):
+            headers = dict(route.request.headers)
+            headers["authorization"] = f"Basic {credentials}"
+            route.continue_(headers=headers)
 
-        page.goto(
+        page.route(f"{base_url}/**", authorize_grafana)
+
+        response = page.goto(
             f"{base_url}/d/gmcomponentes-devops/gm-components-devops-ep3"
             "?from=now-5m&to=now&kiosk"
         )
+        if urlsplit(page.url).path.rstrip("/") == "/login":
+            raise RuntimeError("Grafana redirigió al login al abrir el dashboard.")
+        if response is None or not response.ok:
+            status = response.status if response is not None else "sin respuesta"
+            raise RuntimeError(f"Grafana no pudo abrir el dashboard: {status}")
 
         for title in (
             "Latencia HTTP p95 en 1 minuto",
