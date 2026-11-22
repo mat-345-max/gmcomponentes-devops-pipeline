@@ -125,7 +125,7 @@ jobs:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
   deploy-k8s:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [backend-node, agente-python, observability-tests, security-scan]
     steps:
       - uses: actions/checkout@v4
