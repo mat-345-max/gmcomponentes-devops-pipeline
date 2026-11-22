@@ -17,6 +17,7 @@ data:
         {
           "id": 1,
           "type": "timeseries",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
           "title": "Errores HTTP 5xx en 1 minuto",
           "gridPos": {"x": 0, "y": 0, "w": 8, "h": 8},
           "targets": [{"refId": "A", "expr": "sum by (service) (increase(http_requests_total{namespace=\"gmcomponentes\",status_code=~\"5..\"}[1m]))", "legendFormat": "{{service}}"}]
@@ -24,6 +25,7 @@ data:
         {
           "id": 2,
           "type": "timeseries",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
           "title": "Latencia HTTP p95 en 1 minuto",
           "gridPos": {"x": 8, "y": 0, "w": 8, "h": 8},
           "fieldConfig": {"defaults": {"unit": "s"}, "overrides": []},
@@ -32,6 +34,7 @@ data:
         {
           "id": 3,
           "type": "timeseries",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
           "title": "Disponibilidad de los targets",
           "description": "1 indica que Prometheus pudo consultar el target. 0 indica un fallo de consulta.",
           "gridPos": {"x": 16, "y": 0, "w": 8, "h": 8},
@@ -40,6 +43,7 @@ data:
         {
           "id": 4,
           "type": "timeseries",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
           "title": "CPU por pod en 1 minuto",
           "gridPos": {"x": 0, "y": 8, "w": 12, "h": 8},
           "fieldConfig": {"defaults": {"unit": "cores"}, "overrides": []},
@@ -48,6 +52,7 @@ data:
         {
           "id": 5,
           "type": "timeseries",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
           "title": "Memoria por pod",
           "gridPos": {"x": 12, "y": 8, "w": 12, "h": 8},
           "fieldConfig": {"defaults": {"unit": "bytes"}, "overrides": []},
@@ -56,6 +61,7 @@ data:
         {
           "id": 6,
           "type": "stat",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
           "title": "Cobertura de pruebas por servicio",
           "gridPos": {"x": 0, "y": 16, "w": 12, "h": 5},
           "fieldConfig": {"defaults": {"unit": "percent"}, "overrides": []},
@@ -65,6 +71,7 @@ data:
         {
           "id": 7,
           "type": "stat",
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
           "title": "Duración del despliegue en Kubernetes",
           "gridPos": {"x": 12, "y": 16, "w": 12, "h": 5},
           "fieldConfig": {"defaults": {"unit": "s"}, "overrides": []},
