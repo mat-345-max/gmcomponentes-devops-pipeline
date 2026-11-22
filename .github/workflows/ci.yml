@@ -190,6 +190,9 @@ jobs:
 
       - name: Registrar los servicios en Prometheus (ServiceMonitor)
         run: kubectl apply -f k8s/monitoring/servicemonitors.yaml
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
 
       - name: Instalar Loki (almacén de logs)
         run: |
@@ -210,6 +213,36 @@ jobs:
             --namespace monitoring \
             -f k8s/monitoring/alloy-values.yaml \
             --wait --timeout 5m
+
+      - name: Descargar cobertura del agente
+        uses: actions/download-artifact@v4
+        with:
+          name: cobertura-agente
+          path: ci-coverage
+
+      - name: Descargar cobertura de groq-proxy
+        uses: actions/download-artifact@v4
+        with:
+          name: cobertura-groq-proxy
+          path: ci-coverage
+
+      - name: Enviar métricas del CI a Pushgateway
+        run: |
+          python scripts/ci_metrics.py \
+            --cobertura ci-coverage/cobertura-agente.json ci-coverage/cobertura-groq-proxy.json \
+            --deploy-seconds "$DEPLOY_SECONDS" \
+            --salida ci-metrics.prom
+
+          kubectl port-forward -n monitoring svc/pushgateway 9091:9091 &
+          pushgateway_pid=$!
+          trap 'kill "$pushgateway_pid" 2>/dev/null || true' EXIT
+
+          curl --fail-with-body --show-error --silent \
+            --retry 5 --retry-connrefused --max-time 10 \
+            --request PUT \
+            --header "Content-Type: text/plain; version=0.0.4" \
+            --data-binary @ci-metrics.prom \
+            http://127.0.0.1:9091/metrics/job/gmcomponentes_ci
 
       - name: Verificar servicios (smoke test)
         run: |
