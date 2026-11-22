@@ -345,6 +345,59 @@ jobs:
           echo "Loki no llegó a recibir los logs esperados."
           exit 1
 
+      - name: Instalar Playwright y Chromium
+        run: |
+          python -m pip install playwright==1.56.0
+          python -m playwright install --with-deps chromium
+
+      - name: Generar tráfico para el dashboard
+        run: |
+          kubectl port-forward -n gmcomponentes svc/groq-proxy 28787:8787 &
+          proxy_pid=$!
+          kubectl port-forward -n gmcomponentes svc/agente 28790:8790 &
+          agente_pid=$!
+          trap 'kill "$proxy_pid" "$agente_pid" 2>/dev/null || true' EXIT
+
+          curl --fail --silent --show-error --max-time 5 --retry 5 --retry-connrefused \
+            http://127.0.0.1:28787/api/health >/dev/null
+          curl --fail --silent --show-error --max-time 5 --retry 5 --retry-connrefused \
+            http://127.0.0.1:28790/health >/dev/null
+
+          fin=$((SECONDS + 90))
+          while (( SECONDS < fin )); do
+            curl --fail --silent --show-error --max-time 3 \
+              http://127.0.0.1:28787/api/health >/dev/null
+            curl --fail --silent --show-error --max-time 3 \
+              http://127.0.0.1:28790/health >/dev/null
+            sleep 2
+          done
+
+      - name: Capturar dashboard de Grafana
+        env:
+          GRAFANA_URL: http://127.0.0.1:33000
+          GRAFANA_USER: admin
+          GRAFANA_PASSWORD: admin
+        run: |
+          kubectl port-forward -n monitoring svc/kube-prometheus-stack-grafana 33000:80 &
+          grafana_pid=$!
+          trap 'kill "$grafana_pid" 2>/dev/null || true' EXIT
+
+          curl --fail --silent --show-error --max-time 5 \
+            --retry 5 --retry-connrefused "$GRAFANA_URL/api/health" >/dev/null
+
+          python scripts/capture_grafana.py
+      
+      
+
+      
+
+      - name: Subir captura de Grafana
+        uses: actions/upload-artifact@v4
+        with:
+          name: grafana-dashboard
+          path: artifacts/grafana-dashboard.png
+          if-no-files-found: error
+
       - name: Diagnóstico si algo falla
         if: failure()
         run: |
