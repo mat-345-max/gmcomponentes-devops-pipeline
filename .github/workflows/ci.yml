@@ -191,6 +191,26 @@ jobs:
       - name: Registrar los servicios en Prometheus (ServiceMonitor)
         run: kubectl apply -f k8s/monitoring/servicemonitors.yaml
 
+      - name: Instalar Loki (almacén de logs)
+        run: |
+          helm repo add grafana-community https://grafana-community.github.io/helm-charts
+          helm repo update
+          helm upgrade --install loki grafana-community/loki \
+            --version 20.4.1 \
+            --namespace monitoring \
+            -f k8s/monitoring/loki-values.yaml \
+            --wait --timeout 8m
+
+      - name: Instalar Alloy (recolector de logs)
+        run: |
+          helm repo add grafana https://grafana.github.io/helm-charts
+          helm repo update
+          helm upgrade --install alloy grafana/alloy \
+            --version 1.15.0 \
+            --namespace monitoring \
+            -f k8s/monitoring/alloy-values.yaml \
+            --wait --timeout 5m
+
       - name: Verificar servicios (smoke test)
         run: |
           kubectl port-forward -n gmcomponentes svc/groq-proxy 8787:8787 &
@@ -222,6 +242,29 @@ jobs:
           echo "Prometheus no llegó a leer los 3 targets esperados."
           exit 1
 
+      - name: Verificar que Loki recibe los logs de los servicios
+        run: |
+          kubectl port-forward -n gmcomponentes svc/groq-proxy 18787:8787 &
+          kubectl port-forward -n gmcomponentes svc/agente 18790:8790 &
+          kubectl port-forward -n monitoring svc/loki 3100:3100 &
+          sleep 5
+          for i in $(seq 1 12); do
+            curl -s -o /dev/null http://localhost:18787/api/no-existe
+            curl -s -o /dev/null http://localhost:18790/no-existe
+            N=$(curl -s -G http://localhost:3100/loki/api/v1/query_range \
+              --data-urlencode 'query={namespace="gmcomponentes"} |= "request_id"' \
+              --data-urlencode 'limit=50' \
+              | python3 -c "import sys,json; d=json.load(sys.stdin); print(sum(len(s['values']) for s in d.get('data',{}).get('result',[])))" 2>/dev/null || echo 0)
+            echo "Líneas de log JSON recibidas por Loki: $N (esperadas: al menos 2)"
+            if [ "$N" -ge 2 ]; then
+              echo "Loki está recibiendo los logs JSON de groq-proxy y agente."
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "Loki no llegó a recibir los logs esperados."
+          exit 1
+
       - name: Diagnóstico si algo falla
         if: failure()
         run: |
@@ -231,3 +274,5 @@ jobs:
           kubectl describe pods -n gmcomponentes
           kubectl logs -n gmcomponentes -l app=groq-proxy --tail=50 || true
           kubectl logs -n gmcomponentes -l app=agente --tail=50 || true
+          kubectl logs -n monitoring -l app.kubernetes.io/name=alloy --tail=50 || true
+          kubectl logs -n monitoring -l app.kubernetes.io/name=loki --tail=50 || true

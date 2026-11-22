@@ -1,0 +1,75 @@
+# Alloy como DaemonSet: lee los logs de los pods de gmcomponentes y los envía a Loki.
+# Chart: grafana/alloy
+
+alloy:
+  configMap:
+    content: |
+      // Solo leer los logs de los pods de la aplicación (namespace gmcomponentes)
+      discovery.kubernetes "pods" {
+        role = "pod"
+
+        namespaces {
+          names = ["gmcomponentes"]
+        }
+      }
+
+      discovery.relabel "pod_logs" {
+        targets = discovery.kubernetes.pods.targets
+
+        rule {
+          source_labels = ["__meta_kubernetes_namespace"]
+          target_label  = "namespace"
+        }
+
+        rule {
+          source_labels = ["__meta_kubernetes_pod_name"]
+          target_label  = "pod"
+        }
+
+        rule {
+          source_labels = ["__meta_kubernetes_pod_container_name"]
+          target_label  = "container"
+        }
+
+        rule {
+          source_labels = ["__meta_kubernetes_pod_label_app"]
+          target_label  = "app"
+        }
+      }
+
+      loki.source.kubernetes "pods" {
+        targets    = discovery.relabel.pod_logs.output
+        forward_to = [loki.process.json.receiver]
+      }
+
+      // Los servicios escriben una línea JSON por petición: extraer sus campos
+      loki.process "json" {
+        stage.json {
+          expressions = {
+            level       = "level",
+            request_id  = "request_id",
+            status_code = "status_code",
+          }
+        }
+
+        stage.labels {
+          values = {
+            level = "",
+          }
+        }
+
+        stage.structured_metadata {
+          values = {
+            request_id  = "",
+            status_code = "",
+          }
+        }
+
+        forward_to = [loki.write.default.receiver]
+      }
+
+      loki.write "default" {
+        endpoint {
+          url = "http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push"
+        }
+      }
