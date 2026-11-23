@@ -1,4 +1,5 @@
 import os
+import re
 from base64 import b64encode
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -56,6 +57,25 @@ def main():
             "Duración del despliegue en Kubernetes",
         ):
             page.get_by_text(title, exact=True).wait_for(timeout=30_000)
+
+        for details in page.locator("details").filter(has_text="Details").all():
+            details.evaluate("(element) => { element.open = true; }")
+            print(f"Detalle del panel:\n{details.inner_text()[:2000]}", flush=True)
+
+        coverage = page.get_by_test_id(
+            "data-testid Panel header Cobertura de pruebas por servicio"
+        )
+        coverage.get_by_text("agente", exact=True).wait_for(timeout=30_000)
+        coverage.get_by_text("groq-proxy", exact=True).wait_for(timeout=30_000)
+        coverage.get_by_text(re.compile(r"^\d+(?:[.,]\d+)?\s*%$")).nth(1).wait_for(
+            timeout=30_000
+        )
+
+        deployment = page.get_by_test_id(
+            "data-testid Panel header Duración del despliegue en Kubernetes"
+        )
+        deployment.get_by_text(re.compile(r"^\d")).first.wait_for(timeout=30_000)
+        print("Cobertura y duración visibles en Grafana.", flush=True)
 
         page.screenshot(path=str(output), full_page=True)
         browser.close()
