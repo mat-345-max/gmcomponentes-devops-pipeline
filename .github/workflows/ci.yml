@@ -405,7 +405,7 @@ jobs:
 
       - name: Instalar Playwright y Chromium
         run: |
-          python -m pip install playwright==1.56.0
+          python -m pip install playwright==1.65.2
           python -m playwright install --with-deps chromium
 
       - name: Generar tráfico para el dashboard
