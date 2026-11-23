@@ -31,7 +31,7 @@
     "coverageReporters": ["text", "json-summary"],
     "coverageThreshold": {
       "global": {
-        "statements": 5,
+        "statements": 20,
         "lines": 6
       }
     }
