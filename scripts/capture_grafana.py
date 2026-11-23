@@ -32,8 +32,13 @@ def main():
                 if response.status >= 400:
                     print(response.text()[:1500], flush=True)
 
+        def log_browser_console(message):
+            if message.type == "error":
+                print(f"Consola de Grafana: {message.text[:1500]}", flush=True)
+
         page.route(f"{base_url}/**", authorize_grafana)
         page.on("response", log_grafana_response)
+        page.on("console", log_browser_console)
         page.on(
             "pageerror",
             lambda error: print(f"Error del navegador: {error}", flush=True),
@@ -46,6 +51,7 @@ def main():
 
         if urlsplit(page.url).path.rstrip("/") == "/login":
             raise RuntimeError("Grafana redirigió al login al abrir el dashboard.")
+
         if response is None or not response.ok:
             status = response.status if response is not None else "sin respuesta"
             raise RuntimeError(f"Grafana no pudo abrir el dashboard: {status}")
