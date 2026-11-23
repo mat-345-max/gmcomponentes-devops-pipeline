@@ -24,12 +24,25 @@ def main():
             headers["authorization"] = f"Basic {credentials}"
             route.continue_(headers=headers)
 
+        def log_grafana_response(response):
+            path = urlsplit(response.url).path
+            if path == "/api/ds/query" or path.startswith("/api/datasources"):
+                print(f"Grafana {response.status} {path}", flush=True)
+                if response.status >= 400:
+                    print(response.text()[:1500], flush=True)
+
         page.route(f"{base_url}/**", authorize_grafana)
+        page.on("response", log_grafana_response)
+        page.on(
+            "pageerror",
+            lambda error: print(f"Error del navegador: {error}", flush=True),
+        )
 
         response = page.goto(
             f"{base_url}/d/gmcomponentes-devops/gm-components-devops-ep3"
             "?from=now-5m&to=now&kiosk"
         )
+
         if urlsplit(page.url).path.rstrip("/") == "/login":
             raise RuntimeError("Grafana redirigió al login al abrir el dashboard.")
         if response is None or not response.ok:
