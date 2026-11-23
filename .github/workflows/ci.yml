@@ -443,6 +443,19 @@ jobs:
           curl --fail --silent --show-error --max-time 5 \
             --retry 5 --retry-connrefused "$GRAFANA_URL/api/health" >/dev/null
 
+          cobertura=$(curl --fail-with-body --silent --show-error --max-time 10 \
+            --user "$GRAFANA_USER:$GRAFANA_PASSWORD" \
+            --get "$GRAFANA_URL/api/datasources/proxy/uid/prometheus/api/v1/query" \
+            --data-urlencode 'query=ci_test_coverage_percent{service=~"agente|groq-proxy"}') || {
+            printf '%s\n' "$cobertura"
+            exit 1
+          }
+
+          printf '%s\n' "$cobertura" | jq .
+          printf '%s\n' "$cobertura" | jq -e \
+            '.status == "success" and (([.data.result[].metric.service] | unique) == ["agente", "groq-proxy"])' \
+            >/dev/null
+
           python scripts/capture_grafana.py
       
       
