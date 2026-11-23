@@ -543,3 +543,45 @@ Cada ejecución del pipeline queda asociada a un commit y a un PR específico en
 
 `ev3_observability/security.py` usa `eval()` restringido por una lista blanca de caracteres. Es una decisión consciente: la función evalúa únicamente expresiones aritméticas internas, sin recibir entrada libre del usuario. Si el análisis de Snyk lo marca como hallazgo, se documenta aquí en vez de eliminarse.
 
+---
+
+## 26. Evaluación Parcial 3 de DevOps — Observabilidad y controles del pipeline
+
+### 26.1 Cómo llegan las métricas al dashboard
+
+Los jobs `agente-python` y `backend-node` ejecutan las pruebas de cada servicio y exportan sus resultados de cobertura. En `deploy-k8s`, el pipeline recupera esos resultados y mide el tiempo transcurrido desde el inicio del despliegue hasta que Kubernetes confirma que los despliegues están disponibles.
+
+El pipeline envía a Pushgateway las métricas `ci_test_coverage_percent`, identificada por servicio, y `ci_deploy_duration_seconds`. Prometheus recoge las muestras y Grafana las consulta para mostrar la cobertura y la duración junto con la latencia HTTP p95, la disponibilidad de los targets, el uso de CPU y memoria por pod y los errores HTTP 5xx.
+
+Las pruebas funcionales también comprueban la instrumentación. En `agente`, una petición a `/health` deja una muestra en `http_requests_total` que se puede consultar en `/metrics`. En `groq-proxy`, la prueba equivalente usa `/api/health`.
+
+### 26.2 Captura del dashboard y decisión técnica (IE3 e IE4)
+
+Dentro de `deploy-k8s`, el CI genera tráfico de prueba y ejecuta `scripts/capture_grafana.py` mientras el clúster kind está activo. Antes de guardar el PNG, el script verifica que aparecen los dos servicios, sus porcentajes de cobertura y la duración del despliegue.
+
+| Medición en el CI #90 | Valor visible en Grafana |
+|---|---:|
+| Cobertura de `agente` | 36,8 % |
+| Cobertura de `groq-proxy` | 9,92 % |
+| Duración del despliegue hasta completar los rollouts | 12 s |
+
+La cobertura observada permite priorizar nuevas pruebas en `groq-proxy` y comparar el resultado en ejecuciones posteriores. El panel de errores 5xx quedó sin una serie visible durante esta ejecución.
+
+Para revisar esta evidencia en GitHub, abrir **Actions → CI #90 → Summary → Artifacts**, descargar `grafana-dashboard` y abrir el PNG. La imagen se conserva también en el repositorio.
+
+![Dashboard de Grafana del CI 90 con cobertura, duración y recursos por pod](docs/evidencias/ep3-grafana-ci-90.png)
+
+[Ejecución del CI #90](https://github.com/mat-345-max/gmcomponentes-devops-pipeline/actions/runs/45218101032)
+
+### 26.3 Control de cobertura y bloqueo del despliegue (IE5 e IE6)
+
+El job `backend-node` ejecuta Jest con cobertura. En `develop`, `groq-proxy/package.json` exige al menos un 5 % de cobertura de sentencias y un 6 % de líneas. El job `deploy-k8s` incluye `backend-node` entre sus dependencias obligatorias mediante `needs`.
+
+En el PR de prueba #44 se elevó temporalmente el umbral de sentencias al 20 %. En el CI #93 pasaron las 10 pruebas de `groq-proxy`, pero la cobertura alcanzó el 9,92 %. Jest terminó con código 1, GitHub Actions marcó `backend-node` como fallido y `deploy-k8s` quedó en `Skipped`. El PR se cerró sin fusionar el umbral temporal en `develop`.
+
+| Evidencia del CI #93 | Qué permite comprobar |
+|---|---|
+| [Resultado de Jest](docs/evidencias/ie6-01-fallo-cobertura.png) | El log muestra el umbral exigido, el porcentaje alcanzado y el código de salida. |
+| [Estado de deploy-k8s](docs/evidencias/ie6-02-deploy-k8s-omitido.png) | El despliegue quedó omitido en la misma ejecución. |
+
+[PR de prueba #44](https://github.com/mat-345-max/gmcomponentes-devops-pipeline/pull/44) · [Ejecución del CI #93](https://github.com/mat-345-max/gmcomponentes-devops-pipeline/actions/runs/45223188123)
