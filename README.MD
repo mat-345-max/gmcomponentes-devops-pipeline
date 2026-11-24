@@ -1,5 +1,11 @@
 # GM-COMPONENTS EV3 - Observabilidad sobre Agentes IA
 
+## Entrega EP3 · Ingeniería DevOps (DOY0101)
+
+**[Ver índice de evidencias de la rúbrica (IE1–IE6)](#269-índice-de-evidencias)**
+
+El índice reúne el despliegue en Kubernetes, las métricas y logs, el dashboard de Grafana, los controles de seguridad y la prueba de bloqueo por cobertura. Cada indicador incluye su evidencia y la ejecución de GitHub Actions correspondiente.
+
 Proyecto académico desarrollado como continuación de las Evaluaciones Parciales 1 y 2 para la asignatura **Ingeniería de Soluciones con IA (ISY0101)**.
 
 La EV1 implementó FAQ con RAG, recomendación inteligente, backend Node/Express y frontend Angular/Ionic.
