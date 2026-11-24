@@ -1,0 +1,36 @@
+# Loki en modo monolítico (una sola réplica) con almacenamiento en disco.
+# Pensado para el clúster kind efímero del CI: sin caches, gateway ni canary.
+# Chart: grafana-community/loki
+
+deploymentMode: SingleBinary
+
+loki:
+  # Sin multi-tenant: así Alloy y Grafana no necesitan enviar el encabezado X-Scope-OrgID
+  auth_enabled: false
+  commonConfig:
+    replication_factor: 1
+  storage:
+    type: filesystem
+  # Esquema de prueba que trae el chart para entornos efímeros
+  useTestSchema: true
+
+singleBinary:
+  replicas: 1
+
+read:
+  replicas: 0
+write:
+  replicas: 0
+backend:
+  replicas: 0
+
+gateway:
+  enabled: false
+lokiCanary:
+  enabled: false
+chunksCache:
+  enabled: false
+resultsCache:
+  enabled: false
+test:
+  enabled: false

@@ -18,6 +18,7 @@ from ev3_bridge import (
     log_agent_start,
     sanitize_for_logs,
 )
+from json_logs import request_log_middleware
 from prom_metrics import metrics_endpoint, metrics_middleware
 
 app = FastAPI(
@@ -27,6 +28,7 @@ app = FastAPI(
 )
 
 app.middleware("http")(metrics_middleware)
+app.middleware("http")(request_log_middleware)
 
 # ─── EV2 endpoints ────────────────────────────────────────────────────────────
 

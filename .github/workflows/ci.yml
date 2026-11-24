@@ -18,7 +18,14 @@ jobs:
         with:
           node-version: 22
       - run: npm install
-      - run: npm test
+      - name: Tests de groq-proxy con cobertura
+        run: npm test -- --coverage
+      - name: Exportar cobertura de groq-proxy a JSON
+        run: node -e "const t=require('./coverage/coverage-summary.json').total; require('fs').writeFileSync('cobertura-groq-proxy.json', JSON.stringify({service:'groq-proxy',coverage_percent:t.statements.pct}))"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cobertura-groq-proxy
+          path: groq-proxy/cobertura-groq-proxy.json
 
   agente-python:
     runs-on: ubuntu-latest
@@ -33,7 +40,16 @@ jobs:
       - run: pip install -r requirements.txt
       - run: python -c "import ev3_bridge" || echo "revisar import"
       - run: pip install -r requirements-dev.txt
-      - run: python -m pytest tests -v
+      - name: Tests del agente con cobertura
+        run: python -m pytest tests -v --cov
+      - name: Exportar cobertura del agente a JSON
+        run: |
+          python -m coverage json -o coverage.json
+          python -c "import json; p=json.load(open('coverage.json'))['totals']['percent_covered']; json.dump({'service':'agente','coverage_percent':round(p,2)}, open('cobertura-agente.json','w'))"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cobertura-agente
+          path: agente/cobertura-agente.json
   docker-build-deploy:
     runs-on: ubuntu-latest
     needs: [backend-node, agente-python, observability-tests, security-scan]
@@ -108,9 +124,67 @@ jobs:
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
-  deploy-k8s:
+  validate-k8s:
     runs-on: ubuntu-latest
-    needs: [backend-node, agente-python, observability-tests, security-scan]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Instalar Kubeconform v0.8.0
+        run: |
+          curl -sSL --fail https://github.com/yannh/kubeconform/releases/download/v0.8.0/kubeconform-linux-amd64.tar.gz | tar xz kubeconform
+          sudo mv kubeconform /usr/local/bin/
+          kubeconform -v
+
+      - name: Validar manifiestos base de Kubernetes
+        run: kubeconform -strict -summary k8s/namespace.yaml k8s/agente.yaml k8s/frontend.yaml k8s/groq-proxy.yaml
+
+  scan-images:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { imagen: groq-proxy, contexto: ./groq-proxy }
+          - { imagen: agente, contexto: ./agente }
+          - { imagen: frontend, contexto: . }
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Construir imagen ${{ matrix.imagen }}
+        run: docker build -t ${{ matrix.imagen }}:ci ${{ matrix.contexto }}
+
+      - name: Instalar Trivy v0.76.1
+        run: |
+          curl -sSL --fail https://github.com/aquasecurity/trivy/releases/download/v0.76.1/trivy_0.76.1_Linux-64bit.tar.gz | tar xz trivy
+          sudo mv trivy /usr/local/bin/
+          trivy --version
+
+      - name: Escanear ${{ matrix.imagen }} (bloquea con CRITICAL)
+        shell: bash
+        run: |
+          mkdir -p trivy-reports
+          trivy image --scanners vuln --severity CRITICAL --exit-code 1 \
+            ${{ matrix.imagen }}:ci | tee trivy-reports/${{ matrix.imagen }}.txt
+
+      - name: Subir reporte de Trivy
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-${{ matrix.imagen }}
+          path: trivy-reports/
+          if-no-files-found: warn
+
+  deploy-k8s:
+    runs-on: ubuntu-24.04
+    needs:
+      [
+        backend-node,
+        agente-python,
+        observability-tests,
+        security-scan,
+        validate-k8s,
+        scan-images,
+      ]
     steps:
       - uses: actions/checkout@v4
 
@@ -154,6 +228,83 @@ jobs:
           echo "DEPLOY_SECONDS=$DEPLOY_SECONDS" >> "$GITHUB_ENV"
           echo "Duración del despliegue en k8s: ${DEPLOY_SECONDS}s" >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Instalar Prometheus y Grafana (kube-prometheus-stack)
+        run: |
+          helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+          helm repo update
+          helm upgrade --install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
+            --version 92.22.0 \
+            --namespace monitoring --create-namespace \
+            -f k8s/monitoring/kube-prometheus-stack-values.yaml \
+            --wait --timeout 10m
+
+      - name: Aplicar dashboard de Grafana
+        run: kubectl apply -f k8s/monitoring/grafana-dashboard.yaml
+
+      - name: Instalar Pushgateway
+        run: |
+          helm upgrade --install pushgateway prometheus-community/prometheus-pushgateway \
+            --version 3.11.1 \
+            --namespace monitoring \
+            -f k8s/monitoring/pushgateway-values.yaml \
+            --wait --timeout 5m
+
+      - name: Registrar los servicios en Prometheus (ServiceMonitor)
+        run: kubectl apply -f k8s/monitoring/servicemonitors.yaml
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Instalar Loki (almacén de logs)
+        run: |
+          helm repo add grafana-community https://grafana-community.github.io/helm-charts
+          helm repo update
+          helm upgrade --install loki grafana-community/loki \
+            --version 20.4.1 \
+            --namespace monitoring \
+            -f k8s/monitoring/loki-values.yaml \
+            --wait --timeout 8m
+
+      - name: Instalar Alloy (recolector de logs)
+        run: |
+          helm repo add grafana https://grafana.github.io/helm-charts
+          helm repo update
+          helm upgrade --install alloy grafana/alloy \
+            --version 1.15.0 \
+            --namespace monitoring \
+            -f k8s/monitoring/alloy-values.yaml \
+            --wait --timeout 5m
+
+      - name: Descargar cobertura del agente
+        uses: actions/download-artifact@v4
+        with:
+          name: cobertura-agente
+          path: ci-coverage
+
+      - name: Descargar cobertura de groq-proxy
+        uses: actions/download-artifact@v4
+        with:
+          name: cobertura-groq-proxy
+          path: ci-coverage
+
+      - name: Enviar métricas del CI a Pushgateway
+        run: |
+          python scripts/ci_metrics.py \
+            --cobertura ci-coverage/cobertura-agente.json ci-coverage/cobertura-groq-proxy.json \
+            --deploy-seconds "$DEPLOY_SECONDS" \
+            --salida ci-metrics.prom
+
+          kubectl port-forward -n monitoring svc/pushgateway 9091:9091 &
+          pushgateway_pid=$!
+          trap 'kill "$pushgateway_pid" 2>/dev/null || true' EXIT
+
+          curl --fail-with-body --show-error --silent \
+            --retry 5 --retry-connrefused --max-time 10 \
+            --request PUT \
+            --header "Content-Type: text/plain; version=0.0.4" \
+            --data-binary @ci-metrics.prom \
+            http://127.0.0.1:9091/metrics/job/gmcomponentes_ci
+
       - name: Verificar servicios (smoke test)
         run: |
           kubectl port-forward -n gmcomponentes svc/groq-proxy 8787:8787 &
@@ -166,10 +317,177 @@ jobs:
           curl --fail http://localhost:8787/metrics > /dev/null
           curl --fail http://localhost:8790/metrics > /dev/null
 
+      - name: Verificar que Prometheus está leyendo los servicios
+        run: |
+          kubectl get svc -n monitoring
+          kubectl port-forward -n monitoring svc/kube-prometheus-stack-prometheus 9090:9090 &
+          sleep 5
+          for i in $(seq 1 12); do
+            UP=$(curl -s -G http://localhost:9090/api/v1/query \
+              --data-urlencode 'query=count(up{namespace="gmcomponentes"}==1)' \
+              | python3 -c "import sys,json; r=json.load(sys.stdin)['data']['result']; print(r[0]['value'][1] if r else 0)")
+            echo "Targets leídos por Prometheus en gmcomponentes: $UP (esperados: 3)"
+            if [ "$UP" -ge 3 ]; then
+              echo "Prometheus está leyendo groq-proxy y las 2 réplicas del agente."
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "Prometheus no llegó a leer los 3 targets esperados."
+          exit 1
+
+      - name: Verificar que Grafana cargó el dashboard
+        run: |
+          kubectl port-forward -n monitoring svc/kube-prometheus-stack-grafana 3000:80 &
+          grafana_pid=$!
+          trap 'kill "$grafana_pid" 2>/dev/null || true' EXIT
+
+          for intento in $(seq 1 15); do
+            if curl --fail --silent --max-time 5 --user admin:admin \
+              http://127.0.0.1:3000/api/dashboards/uid/gmcomponentes-devops \
+              | jq -e '.dashboard.uid == "gmcomponentes-devops" and (.dashboard.panels | length == 7)' >/dev/null; then
+              echo "Grafana cargó el dashboard con sus siete paneles."
+              exit 0
+            fi
+            sleep 4
+          done
+
+          echo "::error::Grafana no cargó el dashboard con sus siete paneles."
+          exit 1
+
+      - name: Verificar métricas del CI en Prometheus
+        run: |
+          kubectl port-forward -n monitoring svc/kube-prometheus-stack-prometheus 9092:9090 &
+          prometheus_pid=$!
+          trap 'kill "$prometheus_pid" 2>/dev/null || true' EXIT
+
+          consultar() {
+            curl --fail --silent --max-time 5 --get \
+              --data-urlencode "query=$1" \
+              http://127.0.0.1:9092/api/v1/query
+          }
+
+          for intento in $(seq 1 15); do
+            if consultar 'ci_test_coverage_percent{service=~"agente|groq-proxy"}' \
+              | jq -e '([.data.result[].metric.service] | unique) == ["agente", "groq-proxy"]' >/dev/null \
+              && consultar 'ci_deploy_duration_seconds' \
+              | jq -e '(.data.result | length) > 0' >/dev/null; then
+              echo "Prometheus recibió la cobertura de ambos servicios y la duración del despliegue."
+              exit 0
+            fi
+            sleep 4
+          done
+
+          echo "::error::Faltan métricas del CI en Prometheus."
+          exit 1
+      - name: Verificar que Loki recibe los logs de los servicios
+        run: |
+          kubectl port-forward -n gmcomponentes svc/groq-proxy 18787:8787 &
+          kubectl port-forward -n gmcomponentes svc/agente 18790:8790 &
+          kubectl port-forward -n monitoring svc/loki 3100:3100 &
+          sleep 5
+          for i in $(seq 1 12); do
+            curl -s -o /dev/null http://localhost:18787/api/no-existe
+            curl -s -o /dev/null http://localhost:18790/no-existe
+            N=$(curl -s -G http://localhost:3100/loki/api/v1/query_range \
+              --data-urlencode 'query={namespace="gmcomponentes"} |= "request_id"' \
+              --data-urlencode 'limit=50' \
+              | python3 -c "import sys,json; d=json.load(sys.stdin); print(sum(len(s['values']) for s in d.get('data',{}).get('result',[])))" 2>/dev/null || echo 0)
+            echo "Líneas de log JSON recibidas por Loki: $N (esperadas: al menos 2)"
+            if [ "$N" -ge 2 ]; then
+              echo "Loki está recibiendo los logs JSON de groq-proxy y agente."
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "Loki no llegó a recibir los logs esperados."
+          exit 1
+
+      - name: Instalar Playwright y Chromium
+        run: |
+          python -m pip install playwright==1.65.2
+          python -m playwright install --with-deps chromium
+
+      - name: Generar tráfico para el dashboard
+        run: |
+          kubectl port-forward -n gmcomponentes svc/groq-proxy 28787:8787 &
+          proxy_pid=$!
+          kubectl port-forward -n gmcomponentes svc/agente 28790:8790 &
+          agente_pid=$!
+          trap 'kill "$proxy_pid" "$agente_pid" 2>/dev/null || true' EXIT
+
+          curl --fail --silent --show-error --max-time 5 --retry 5 --retry-connrefused \
+            http://127.0.0.1:28787/api/health >/dev/null
+          curl --fail --silent --show-error --max-time 5 --retry 5 --retry-connrefused \
+            http://127.0.0.1:28790/health >/dev/null
+
+          fin=$((SECONDS + 90))
+          while (( SECONDS < fin )); do
+            curl --fail --silent --show-error --max-time 3 \
+              http://127.0.0.1:28787/api/health >/dev/null
+            curl --fail --silent --show-error --max-time 3 \
+              http://127.0.0.1:28790/health >/dev/null
+            sleep 2
+          done
+
+      - name: Capturar dashboard de Grafana
+        env:
+          GRAFANA_URL: http://127.0.0.1:33000
+          GRAFANA_USER: admin
+          GRAFANA_PASSWORD: admin
+        run: |
+          kubectl port-forward -n monitoring svc/kube-prometheus-stack-grafana 33000:80 &
+          grafana_pid=$!
+          trap 'kill "$grafana_pid" 2>/dev/null || true' EXIT
+
+          curl --fail --silent --show-error --max-time 5 \
+            --retry 5 --retry-connrefused "$GRAFANA_URL/api/health" >/dev/null
+
+          cobertura=$(curl --fail-with-body --silent --show-error --max-time 10 \
+            --user "$GRAFANA_USER:$GRAFANA_PASSWORD" \
+            --get "$GRAFANA_URL/api/datasources/proxy/uid/prometheus/api/v1/query" \
+            --data-urlencode 'query=ci_test_coverage_percent{service=~"agente|groq-proxy"}') || {
+            printf '%s\n' "$cobertura"
+            exit 1
+          }
+
+          printf '%s\n' "$cobertura" | jq .
+          printf '%s\n' "$cobertura" | jq -e \
+            '.status == "success" and (([.data.result[].metric.service] | unique) == ["agente", "groq-proxy"])' \
+            >/dev/null
+
+          python scripts/capture_grafana.py
+      
+      
+
+      
+
+      - name: Subir captura de Grafana
+        uses: actions/upload-artifact@v4
+        with:
+          name: grafana-dashboard
+          path: artifacts/grafana-dashboard.png
+          if-no-files-found: error
+
+      - name: Recopilar evidencias de infraestructura
+        run: bash scripts/recolectar_evidencias.sh artifacts/evidencia-infraestructura.md
+
+      - name: Subir evidencias de infraestructura
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: evidencia-infraestructura
+          path: artifacts/evidencia-infraestructura.md
+          if-no-files-found: ignore
+
       - name: Diagnóstico si algo falla
         if: failure()
         run: |
-          kubectl get pods -n gmcomponentes -o wide
+          kubectl get pods -A -o wide
+          kubectl get svc -n monitoring
+          kubectl get servicemonitors -A
           kubectl describe pods -n gmcomponentes
           kubectl logs -n gmcomponentes -l app=groq-proxy --tail=50 || true
           kubectl logs -n gmcomponentes -l app=agente --tail=50 || true
+          kubectl logs -n monitoring -l app.kubernetes.io/name=alloy --tail=50 || true
+          kubectl logs -n monitoring -l app.kubernetes.io/name=loki --tail=50 || true

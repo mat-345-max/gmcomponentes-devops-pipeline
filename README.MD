@@ -1,5 +1,11 @@
 # GM-COMPONENTS EV3 - Observabilidad sobre Agentes IA
 
+## Entrega EP3 · Ingeniería DevOps (DOY0101)
+
+**[Ver índice de evidencias de la rúbrica (IE1–IE6)](#269-índice-de-evidencias)**
+
+El índice reúne el despliegue en Kubernetes, las métricas y logs, el dashboard de Grafana, los controles de seguridad y la prueba de bloqueo por cobertura. Cada indicador incluye su evidencia y la ejecución de GitHub Actions correspondiente.
+
 Proyecto académico desarrollado como continuación de las Evaluaciones Parciales 1 y 2 para la asignatura **Ingeniería de Soluciones con IA (ISY0101)**.
 
 La EV1 implementó FAQ con RAG, recomendación inteligente, backend Node/Express y frontend Angular/Ionic.
@@ -543,3 +549,138 @@ Cada ejecución del pipeline queda asociada a un commit y a un PR específico en
 
 `ev3_observability/security.py` usa `eval()` restringido por una lista blanca de caracteres. Es una decisión consciente: la función evalúa únicamente expresiones aritméticas internas, sin recibir entrada libre del usuario. Si el análisis de Snyk lo marca como hallazgo, se documenta aquí en vez de eliminarse.
 
+---
+
+## 26. Evaluación Parcial 3 de DevOps — Observabilidad y controles del pipeline
+
+### 26.1 Cómo llegan las métricas al dashboard
+
+Los jobs `agente-python` y `backend-node` ejecutan las pruebas de cada servicio y exportan sus resultados de cobertura. En `deploy-k8s`, el pipeline recupera esos resultados y mide el tiempo transcurrido desde el inicio del despliegue hasta que Kubernetes confirma que los despliegues están disponibles.
+
+El pipeline envía a Pushgateway las métricas `ci_test_coverage_percent`, identificada por servicio, y `ci_deploy_duration_seconds`. Prometheus recoge las muestras y Grafana las consulta para mostrar la cobertura y la duración junto con la latencia HTTP p95, la disponibilidad de los targets, el uso de CPU y memoria por pod y los errores HTTP 5xx.
+
+Las pruebas funcionales también comprueban la instrumentación. En `agente`, una petición a `/health` deja una muestra en `http_requests_total` que se puede consultar en `/metrics`. En `groq-proxy`, la prueba equivalente usa `/api/health`.
+
+### 26.2 Captura del dashboard y decisión técnica (IE3 e IE4)
+
+Dentro de `deploy-k8s`, el CI genera tráfico de prueba y ejecuta `scripts/capture_grafana.py` mientras el clúster kind está activo. Antes de guardar el PNG, el script verifica que aparecen los dos servicios, sus porcentajes de cobertura y la duración del despliegue.
+
+| Medición en el CI #90 | Valor visible en Grafana |
+|---|---:|
+| Cobertura de `agente` | 36,8 % |
+| Cobertura de `groq-proxy` | 9,92 % |
+| Duración del despliegue hasta completar los rollouts | 12 s |
+
+La cobertura observada permite priorizar nuevas pruebas en `groq-proxy` y comparar el resultado en ejecuciones posteriores. El panel de errores 5xx quedó sin una serie visible durante esta ejecución.
+
+Para revisar esta evidencia en GitHub, abrir **Actions → CI #90 → Summary → Artifacts**, descargar `grafana-dashboard` y abrir el PNG. La imagen se conserva también en el repositorio.
+
+![Dashboard de Grafana del CI 90 con cobertura, duración y recursos por pod](docs/evidencias/ep3-grafana-ci-90.png)
+
+[Ejecución del CI #90](https://github.com/mat-345-max/gmcomponentes-devops-pipeline/actions/runs/45218101032)
+
+### 26.3 Control de cobertura y bloqueo del despliegue (IE5 e IE6)
+
+El job `backend-node` ejecuta Jest con cobertura. En `develop`, `groq-proxy/package.json` exige al menos un 5 % de cobertura de sentencias y un 6 % de líneas. El job `deploy-k8s` incluye `backend-node` entre sus dependencias obligatorias mediante `needs`.
+
+En el PR de prueba #44 se elevó temporalmente el umbral de sentencias al 20 %. En el CI #93 pasaron las 10 pruebas de `groq-proxy`, pero la cobertura alcanzó el 9,92 %. Jest terminó con código 1, GitHub Actions marcó `backend-node` como fallido y `deploy-k8s` quedó en `Skipped`. El PR se cerró sin fusionar el umbral temporal en `develop`.
+
+| Evidencia del CI #93 | Qué permite comprobar |
+|---|---|
+| [Resultado de Jest](docs/evidencias/ie6-01-fallo-cobertura.png) | El log muestra el umbral exigido, el porcentaje alcanzado y el código de salida. |
+| [Estado de deploy-k8s](docs/evidencias/ie6-02-deploy-k8s-omitido.png) | El despliegue quedó omitido en la misma ejecución. |
+
+[PR de prueba #44](https://github.com/mat-345-max/gmcomponentes-devops-pipeline/pull/44) · [Ejecución del CI #93](https://github.com/mat-345-max/gmcomponentes-devops-pipeline/actions/runs/45223188123)
+
+### 26.4 Arquitectura en Kubernetes (IE2)
+
+El despliegue usa un clúster kind creado dentro del job `deploy-k8s` y dos namespaces: `gmcomponentes`, con la aplicación, y `monitoring`, con Prometheus, Grafana, Pushgateway, Loki y Alloy. Los manifiestos de la aplicación están en la carpeta `k8s/`.
+
+| Servicio | Réplicas | Puerto | Probes de salud | Recursos solicitados | Límites |
+|---|---:|---:|---|---|---|
+| `groq-proxy` | 1 | 8787 | `/api/health` | 100m de CPU y 128 Mi | 500m de CPU y 512 Mi |
+| `agente` | 2 | 8790 | `/health` | 100m de CPU y 256 Mi | 500m de CPU y 512 Mi |
+| `frontend` | 1 | 80 | `/healthz` | 50m de CPU y 32 Mi | 250m de CPU y 128 Mi |
+
+Cada servicio tiene un Deployment con probes de readiness y liveness sobre ese endpoint, y un Service de tipo ClusterIP. El `agente` corre con dos réplicas y su Service reparte las peticiones entre ellas, función que en Docker Compose cumplía el balanceador `nginx-lb`. La configuración no sensible de `groq-proxy` y `agente` está en ConfigMaps. Las claves llegan desde el Secret `groq-proxy-secret`, que en el CI se crea con valores de prueba (`dummy`).
+
+### 26.5 Controles previos al despliegue (IE5 e IE6)
+
+Además de la cobertura (sección 26.3) y del análisis de seguridad con Snyk, el pipeline ejecuta dos controles sobre la infraestructura antes de crear el clúster:
+
+| Job | Herramienta | Qué comprueba | Cuándo bloquea |
+|---|---|---|---|
+| `validate-k8s` | Kubeconform v0.8.0 | Valida `k8s/namespace.yaml`, `k8s/agente.yaml`, `k8s/frontend.yaml` y `k8s/groq-proxy.yaml` con `kubeconform -strict -summary` | Si un manifiesto no cumple el esquema de Kubernetes |
+| `scan-images` | Trivy v0.76.1 | Construye las imágenes `groq-proxy`, `agente` y `frontend` y las escanea con `--scanners vuln --severity CRITICAL --exit-code 1` | Si alguna imagen tiene una vulnerabilidad CRITICAL |
+
+`scan-images` usa una matriz con las tres imágenes y sube un reporte por imagen como artifact (`trivy-groq-proxy`, `trivy-agente` y `trivy-frontend`), incluso cuando el escaneo falla. El job `deploy-k8s` depende, mediante `needs`, de `backend-node`, `agente-python`, `observability-tests`, `security-scan`, `validate-k8s` y `scan-images`. Si cualquiera falla, GitHub Actions deja `deploy-k8s` en `Skipped`, como muestra la evidencia de la sección 26.3.
+
+### 26.6 Despliegue en kind y verificación (IE2)
+
+El job `deploy-k8s` sigue esta secuencia:
+
+1. Crea el clúster kind `gmcomponentes` con `helm/kind-action`.
+2. Construye las imágenes `groq-proxy:ci`, `agente:ci` y `frontend:ci` y las carga en kind con `kind load docker-image`.
+3. Crea el namespace, el Secret de prueba y aplica los manifiestos de `k8s/`.
+4. Espera con `kubectl rollout status` (hasta 180 s por Deployment) a que los tres despliegues estén disponibles y calcula `DEPLOY_SECONDS`, que se publica como `ci_deploy_duration_seconds` (sección 26.1). Mide el intervalo del despliegue hasta que terminan los rollouts, no el tiempo del job completo. En el CI #99 fue de 13 s ([informe](docs/evidencias/ie1-ie2-infraestructura-ci-99.md)); los 12 s que muestra el dashboard de la sección 26.2 corresponden al CI #90.
+5. Instala con Helm el stack de monitoreo, con las versiones fijadas de la tabla siguiente.
+6. Ejecuta pruebas de humo mediante `kubectl port-forward`: `/api/health` de `groq-proxy`, `/health` de `agente`, `/healthz` de `frontend` y `/metrics` de los dos backends.
+7. Comprueba que Prometheus lee tres targets de aplicación y que Loki recibe logs (sección 26.7).
+8. Genera tráfico de prueba y captura el dashboard de Grafana (sección 26.2).
+
+| Componente | Versión fijada | Uso |
+|---|---|---|
+| kube-prometheus-stack (Helm) | 92.22.0 | Prometheus y Grafana |
+| prometheus-pushgateway (Helm) | 3.11.1 | Métricas del CI |
+| Loki (Helm) | 20.4.1 | Almacén de logs |
+| Alloy (Helm) | 1.15.0 | Recolector de logs |
+| Kubeconform | v0.8.0 | Validación de manifiestos |
+| Trivy | v0.76.1 | Escaneo de imágenes |
+
+Las versiones están escritas en `ci.yml`, de modo que una ejecución no cambia sin un commit que lo indique.
+
+### 26.7 Monitoreo y logs (IE1)
+
+**Métricas.** Dos ServiceMonitor (`k8s/monitoring/servicemonitors.yaml`) hacen que Prometheus lea `/metrics` de `groq-proxy` y de `agente` cada 15 s. Como el agente tiene dos réplicas, Prometheus debe ver tres targets de aplicación: uno de `groq-proxy` y dos de `agente`. El pipeline lo comprueba con la consulta `up{namespace="gmcomponentes"}`. La etiqueta `service`, que añade el ServiceMonitor, separa los dos backends aunque usen los mismos nombres de métrica.
+
+**Logs.** Alloy corre como DaemonSet, lee los logs de los pods del namespace `gmcomponentes` y los envía a Loki, instalado en modo monolítico con almacenamiento en disco y sin multi-tenant. Cada petición de `groq-proxy` y `agente` genera una línea JSON con `service`, `level`, `request_id` y `status_code`. Alloy extrae `level` como etiqueta y `request_id` y `status_code` como metadatos estructurados. Grafana tiene Loki como fuente de datos (uid `loki`), de modo que los logs de cada backend se consultan por separado:
+
+```text
+{namespace="gmcomponentes"} | json | service="groq-proxy"
+{namespace="gmcomponentes"} | json | service="agente"
+```
+
+Las rutas de salud y `/metrics` no se registran en los logs. Para comprobar Loki, el pipeline solicita rutas inexistentes, que sí quedan registradas con código 404.
+
+**Muestras reales (CI #99, [informe](docs/evidencias/ie1-ie2-infraestructura-ci-99.md)).** Prometheus devolvió `up=1` para los tres targets (`agente` en dos pods y `groq-proxy` en uno). Cada consulta de Loki devolvió 2 líneas; esta es una de cada backend:
+
+```json
+{"timestamp":"2026-11-23T21:45:41.195Z","level":"warn","service":"groq-proxy","message":"http_request","request_id":"3d449084-8806-43db-9d9b-65b1d0f52d5e","method":"GET","route":"sin_ruta","status_code":404,"duration_ms":0.66}
+{"timestamp": "2026-11-23T21:45:41.202Z", "level": "warn", "service": "agente", "message": "http_request", "request_id": "dbcaedc2-24e8-46f8-b6df-87f46300d1f6", "method": "GET", "route": "sin_ruta", "status_code": 404, "duration_ms": 0.4}
+```
+
+**Decisión técnica que habilita.** Si `up{namespace="gmcomponentes"}` muestra un target en 0, se revisan en este orden la readiness del pod (`kubectl get pods -n gmcomponentes`), los eventos del Deployment y el Service. Si en cambio aparecen errores, se consulta Loki filtrando por `service` y se sigue el `request_id` de la línea para localizar la petición concreta, sin mezclar los logs de `groq-proxy` con los de `agente`.
+
+### 26.8 Limitaciones y reproducción
+
+- El clúster kind es efímero: corre dentro de un runner de GitHub Actions y se destruye al terminar el job. No es un clúster gestionado por un proveedor de nube.
+- En el CI el Secret usa valores `dummy`, así que `groq-proxy` no ejercita llamadas a Groq, Voyage ni MongoDB. Se verifican salud, métricas y logs, no las respuestas del asistente.
+- El frontend llama a `http://localhost:8787` desde el navegador. Para verlo funcionar en kind hay que exponer ambos servicios con `kubectl port-forward -n gmcomponentes svc/groq-proxy 8787:8787` y `kubectl port-forward -n gmcomponentes svc/frontend 8080:80`.
+- Kubeconform valida solo los cuatro manifiestos base. `k8s/monitoring` contiene valores de Helm y recursos de Prometheus que no pasan por ese control.
+- Trivy está configurado para bloquear vulnerabilidades CRITICAL; no evalúa las severidades menores.
+- La contraseña de Grafana (`admin`) solo se acepta porque el clúster es efímero y no está expuesto.
+- **Alcance del entorno.** El despliegue corre en un entorno Kubernetes temporal de producción simulada con kind en un runner Ubuntu de GitHub Actions. Los Services son internos (ClusterIP): el CI usa `port-forward` mientras dura el job y después elimina el clúster. Falta confirmar con el docente si este alcance cumple el requisito «en alguna nube». Si exige un clúster en un proveedor, se acordarán alcance y costos antes de crear recursos.
+- **Evidencia de errores.** El panel de errores 5xx del dashboard del CI #90 no tenía una serie visible. La evidencia de los 404 del CI #99 proviene de Loki y mide otra clase de error (rutas inexistentes, error del cliente), por lo que no sustituye al panel 5xx.
+
+Para reproducir el despliegue basta con un push a `develop` o un Pull Request hacia `develop` o `main`: el workflow ejecuta los controles y `deploy-k8s`, y el resultado se revisa en la pestaña **Actions**.
+
+### 26.9 Índice de evidencias
+
+| Indicador | Evidencia y enlace | Run o commit | Qué comprueba |
+|---|---|---|---|
+| IE1 | [Informe de infraestructura](docs/evidencias/ie1-ie2-infraestructura-ci-99.md) | [CI #99](https://github.com/mat-345-max/gmcomponentes-devops-pipeline/actions/runs/45271271508), commit `06c3e07` | Prometheus lee tres targets (`up=1`) y Loki devuelve 2 líneas por cada backend |
+| IE2 | [Informe de infraestructura](docs/evidencias/ie1-ie2-infraestructura-ci-99.md) | [CI #99](https://github.com/mat-345-max/gmcomponentes-devops-pipeline/actions/runs/45271271508) | Despliegue en kind: 4/4 pods Ready, rollouts completados en 13 s y HTTP 200 en los tres servicios |
+| IE3 | [Dashboard de Grafana](docs/evidencias/ep3-grafana-ci-90.png) | [CI #90](https://github.com/mat-345-max/gmcomponentes-devops-pipeline/actions/runs/45218101032) | Métricas del dashboard: despliegue de 12 s, cobertura, CPU y memoria, errores |
+| IE4 | Secciones 26.1, 26.2, 26.6 y 26.7 de este README | Pasos de reproducción y decisiones técnicas | Cómo se integran las herramientas al pipeline y qué decisión permite cada una |
+| IE5 | Secciones 26.3 y 26.5, y [`ci.yml`](.github/workflows/ci.yml) y la regla de `develop`: [estado Active](docs/evidencias/ie5-01a-regla-activa.jpg), [rama objetivo](docs/evidencias/ie5-01b-rama-objetivo.jpg), [1 aprobación requerida](docs/evidencias/ie5-01c-aprobaciones.jpg) y [nueve checks requeridos](docs/evidencias/ie5-01d-checks-1.jpg) ([parte 2](docs/evidencias/ie5-01e-checks-2.jpg)); [merge bloqueado por falta de aprobación](docs/evidencias/ie5-02-merge-bloqueado.jpg) | [CI #99](https://github.com/mat-345-max/gmcomponentes-devops-pipeline/actions/runs/45271271508) | Kubeconform, Trivy, cobertura y la regla de `develop` condicionan el despliegue y el merge |
+| IE6 | [Fallo de cobertura](docs/evidencias/ie6-01-fallo-cobertura.png) y [`deploy-k8s` omitido](docs/evidencias/ie6-02-deploy-k8s-omitido.png) | [CI #93](https://github.com/mat-345-max/gmcomponentes-devops-pipeline/actions/runs/45223188123) y PR de prueba #44 | Pasaron 10 tests, Jest midió 9,92 % frente al 20 % exigido, `backend-node` falló y `deploy-k8s` quedó Skipped |

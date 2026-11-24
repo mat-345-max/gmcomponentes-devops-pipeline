@@ -7,6 +7,7 @@ dotenv.config({
   path: path.join(__dirname, '.env')
 });
 
+const { requestLogger } = require('./logger');
 const { metricsMiddleware, metricsHandler } = require('./metrics');
 const faqRoute = require('./routes/faq.route');
 const recommendationRoute = require('./routes/recommendation.route');
@@ -16,6 +17,7 @@ const ev3Route = require('./routes/ev3.route');
 const app = express();
 
 app.use(cors());
+app.use(requestLogger);
 app.use(express.json({ limit: '2mb' }));
 app.use(metricsMiddleware);
 
