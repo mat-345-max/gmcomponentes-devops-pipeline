@@ -684,3 +684,11 @@ Para reproducir el despliegue basta con un push a `develop` o un Pull Request ha
 | IE4 | Secciones 26.1, 26.2, 26.6 y 26.7 de este README | Pasos de reproducción y decisiones técnicas | Cómo se integran las herramientas al pipeline y qué decisión permite cada una |
 | IE5 | Secciones 26.3 y 26.5, y [`ci.yml`](.github/workflows/ci.yml) y la regla de `develop`: [estado Active](docs/evidencias/ie5-01a-regla-activa.jpg), [rama objetivo](docs/evidencias/ie5-01b-rama-objetivo.jpg), [1 aprobación requerida](docs/evidencias/ie5-01c-aprobaciones.jpg) y [nueve checks requeridos](docs/evidencias/ie5-01d-checks-1.jpg) ([parte 2](docs/evidencias/ie5-01e-checks-2.jpg)); [merge bloqueado por falta de aprobación](docs/evidencias/ie5-02-merge-bloqueado.jpg) | [CI #99](https://github.com/mat-345-max/gmcomponentes-devops-pipeline/actions/runs/45271271508) | Kubeconform, Trivy, cobertura y la regla de `develop` condicionan el despliegue y el merge |
 | IE6 | [Fallo de cobertura](docs/evidencias/ie6-01-fallo-cobertura.png) y [`deploy-k8s` omitido](docs/evidencias/ie6-02-deploy-k8s-omitido.png) | [CI #93](https://github.com/mat-345-max/gmcomponentes-devops-pipeline/actions/runs/45223188123) y PR de prueba #44 | Pasaron 10 tests, Jest midió 9,92 % frente al 20 % exigido, `backend-node` falló y `deploy-k8s` quedó Skipped |
+
+### 26.10 Conclusiones de la EP3
+
+#### Reflexión individual de Marcelo
+
+Durante el proyecto me familiaricé con Kubernetes y con las integraciones de GitHub Actions. Como equipo, decidimos usar kind para crear un clúster temporal de Kubernetes dentro de un runner de GitHub Actions. Montarlo desde cero nos exigió más trabajo y me ayudó a entender mejor cómo se despliegan los servicios. Esta experiencia también me sirve para preparar el examen.
+Yo me encargué de validar la integración de Grafana y comprobar en local que las métricas se visualizaran correctamente. Después subí los cambios a las ramas correspondientes de GitHub y revisé la captura del dashboard que generó el pipeline.
+
