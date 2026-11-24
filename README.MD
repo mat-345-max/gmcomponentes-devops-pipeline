@@ -692,8 +692,6 @@ Para reproducir el despliegue basta con un push a `develop` o un Pull Request ha
 Durante el proyecto me familiaricé con Kubernetes y con las integraciones de GitHub Actions. Como equipo, decidimos usar kind para crear un clúster temporal de Kubernetes dentro de un runner de GitHub Actions. Montarlo desde cero nos exigió más trabajo y me ayudó a entender mejor cómo se despliegan los servicios. Esta experiencia también me sirve para preparar el examen.
 Yo me encargué de validar la integración de Grafana y comprobar en local que las métricas se visualizaran correctamente. Después subí los cambios a las ramas correspondientes de GitHub y revisé la captura del dashboard que generó el pipeline.
 
-### 26.10 Conclusiones de la EP3
-
 #### Reflexión individual de Matias
 
 Durante el proyecto me encargué de documentar la arquitectura en Kubernetes, los controles previos al despliegue y el monitoreo en el README. También guardé el informe del CI #99 y documenté las reglas de protección de la rama develop. Una dificultad fue identificar que algunas capturas pertenecían a ejecuciones diferentes, ya que los nombres de los pods y los horarios no coincidían. Esto me ayudó a entender la importancia de relacionar cada evidencia con su ejecución y cómo los checks del pipeline pueden bloquear un merge si no se cumplen los requisitos. Esta experiencia me permitió comprender mejor el proceso de integración y despliegue continuo.
