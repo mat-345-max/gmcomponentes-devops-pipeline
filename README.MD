@@ -689,8 +689,9 @@ Para reproducir el despliegue basta con un push a `develop` o un Pull Request ha
 
 #### Reflexión individual de Marcelo
 
-Durante el proyecto me familiaricé con Kubernetes y con las integraciones de GitHub Actions. Como equipo, decidimos usar kind para crear un clúster temporal de Kubernetes dentro de un runner de GitHub Actions. Montarlo desde cero nos exigió más trabajo y me ayudó a entender mejor cómo se despliegan los servicios. Esta experiencia también me sirve para preparar el examen.
-Yo me encargué de validar la integración de Grafana y comprobar en local que las métricas se visualizaran correctamente. Después subí los cambios a las ramas correspondientes de GitHub y revisé la captura del dashboard que generó el pipeline.
+Durante el desarrollo del proyecto pude aprender más sobre Kubernetes y cómo funciona su integración con GitHub Actions. Como equipo, decidimos utilizar kind para crear un clúster temporal de Kubernetes dentro de un runner de GitHub Actions. Si bien configurarlo desde cero nos tomó más tiempo y esfuerzo, me permitió comprender mejor cómo funciona el despliegue de los servicios y reforzar mis conocimientos para el examen.
+
+Por mi parte, me encargué de probar la integración de Grafana y verificar de manera local que las métricas se mostraran correctamente. Una vez realizadas las pruebas, subí los cambios a las ramas correspondientes de GitHub y revisé la captura del dashboard generada por el pipeline para comprobar que todo funcionara como esperábamos.
 
 #### Reflexión individual de Matias
 
