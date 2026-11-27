@@ -418,6 +418,30 @@ Se utilizó Claude (Anthropic) como herramienta de apoyo durante el desarrollo d
 - Redacción base del workflow de GitHub Actions (`ci.yml`) y de las secciones de convenciones (17-23), adaptadas por el equipo a la realidad del proyecto.
 - Apoyo para diagnosticar y corregir errores de flujo (PRs mergeados a la rama base incorrecta).
 
+### Evaluación Parcial 1
+
+- Guía paso a paso para la configuración de Git/GitHub (creación de ramas, resolución de errores de remoto, PRs).
+- Ayuda para la metodología de trabajo (GitFlow/trunk-based development) y para la toma de decisión respectiva.
+- Redacción base del workflow de GitHub Actions (`ci.yml`) y de las secciones de convenciones (17-23), adaptadas por el equipo a la realidad del proyecto.
+- Apoyo para diagnosticar y corregir errores de flujo (PRs mergeados a la rama base incorrecta).
+
+### Evaluación Parcial 2
+
+- Plantillas iniciales de los Dockerfiles, del `docker-compose.yml` y del job `docker-build-deploy`, que el equipo corrigió y amplió (Node 22, healthchecks, límites de recursos y balanceador del agente).
+- Redacción base de las pruebas con PyTest y guia de su uso, `ev3_observability` (28 tests) y de `dependabot.yml`.
+- Diagnóstico de las alertas nuevas de Snyk (`SNYK-JS-QS-20943482` y `SNYK-JS-BODYPARSER-21431495`) y propuesta de actualizar `express` a 4.22.3, comprobando las versiones en el registro de npm.
+- Ayuda para instalar y configurar Docker Desktop (WSL2 y virtualización) y para resolver el conflicto del README en el PR #17.
+
+### Evaluación Parcial 3
+
+- `groq-proxy` (`metrics.js`) y en el agente (`prom_metrics.py`), tests.
+-`groq-proxy` y el agente (`logger.js`, `json_logs.py`),tests.
+- Redacción base de `scripts/ci_metrics.py`, que genera las métricas del CI en formato Prometheus, y de sus tests.
+- Revisión del repositorio y de la sección 26 frente a la rúbrica, con la lista de observaciones y la estimación de cumplimiento.
+- Guía paso a paso para el trabajo en ramas y Pull Requests desde VS Code.
+
+Todo el código se ejecutó y se probó en el repositorio (tests locales y CI de GitHub Actions) y se integró mediante Pull Requests revisados por el otro integrante. Las reflexiones individuales de la sección 26.10 fueron redactadas por cada integrante sin apoyo de IA.
+
 El equipo revisó, validó y aplicó cada sugerencia, verificando que el resultado funcionara correctamente en el repositorio (ramas, PRs, pipeline de CI). Las reflexiones individuales sobre el aprendizaje del proceso se encuentran en la sección de conclusiones del proyecto, redactadas sin apoyo de IA.
 
 ---
